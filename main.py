@@ -1,4 +1,4 @@
-from rPlace.bot import runBot 
+from src.bot import run
 
 print('''
         ______  _                  _ 
@@ -8,4 +8,4 @@ print('''
  |_|/_/  |_|   |_|\__,_|\___\___| (_)
 ''')
 
-runBot()
+app = run()
