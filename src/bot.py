@@ -24,7 +24,7 @@ def run():
   async def startup_event():
     app.grid = await app.db.dump()
 
-  # Cleanup sessions on shutdown
+  # Cleanup sessions on shutdown (for local hosting)
   @app.on_event('shutdown')
   async def shutdown_event():
     await app.http.session.close()
