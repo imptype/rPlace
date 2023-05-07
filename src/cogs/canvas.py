@@ -1,7 +1,4 @@
 import discohook
-
-
-import discohook
 from ..views.startview import start_view
 
 @discohook.command('canvas', 'interact with the global canvas!')

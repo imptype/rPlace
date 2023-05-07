@@ -1,8 +1,7 @@
 import discohook
 from .exploreview import explore_view
-from ..classes import custom_button
 
-@custom_button('Explore', '🔍')
+@discohook.button('Explore', emoji = '🔍')
 async def explore_button(interaction):
   embed = discohook.Embed(
     title = 'Selecting tile (0, 0)',
