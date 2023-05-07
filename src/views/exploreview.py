@@ -1,46 +1,40 @@
 import discohook
 
-def get_button_name(interaction):
-  for row in interaction.payload['message']['components']:
-    for component in row['components']:
-      if component['custom_id'] == interaction.data['custom_id']:
-        return component['emoji']['name']
-
 @discohook.button(emoji = '↖️', custom_id = 'upleft:v0.0')
 async def upleft_button(interaction):
-  await interaction.response('click {}'.format(get_button_name(interaction)))
+  await interaction.response('click {}'.format(interaction.client.utils.get_button_name(interaction)))
 
 @discohook.button(emoji = '⬆️', custom_id = 'up:v0.0')
 async def up_button(interaction):
-  await interaction.response('click {}'.format(get_button_name(interaction)))
+  await interaction.response('click {}'.format(interaction.client.utils.get_button_name(interaction)))
 
 @discohook.button(emoji = '↗️', custom_id = 'upright:v0.0')
 async def upright_button(interaction):
-  await interaction.response('click {}}'.format(get_button_name(interaction)))
+  await interaction.response('click {}}'.format(interaction.client.utils.get_button_name(interaction)))
 
 @discohook.button(emoji = '⬅️', custom_id = 'left:v0.0')
 async def left_button(interaction):
-  await interaction.response('click {}'.format(get_button_name(interaction)))
+  await interaction.response('click {}'.format(interaction.client.utils.get_button_name(interaction)))
 
 @discohook.button(emoji = '🆗', custom_id = 'place:v0.0')
 async def place_button(interaction):
-  await interaction.response('click {}'.format(get_button_name(interaction)))
+  await interaction.response('click {}'.format(interaction.client.utils.get_button_name(interaction)))
 
 @discohook.button(emoji = '➡️', custom_id = 'right:v0.0')
 async def right_button(interaction):
-  await interaction.response('click {}'.format(get_button_name(interaction)))
+  await interaction.response('click {}'.format(interaction.client.utils.get_button_name(interaction)))
 
 @discohook.button(emoji = '↙️', custom_id = 'downleft:v0.0')
 async def downleft_button(interaction):
-  await interaction.response('click {}'.format(get_button_name(interaction)))
+  await interaction.response('click {}'.format(interaction.client.utils.get_button_name(interaction)))
 
 @discohook.button(emoji = '⬇️', custom_id = 'down:v0.0')
 async def down_button(interaction):
-  await interaction.response('click {}'.format(get_button_name(interaction)))
+  await interaction.response('click {}'.format(interaction.client.utils.get_button_name(interaction)))
 
 @discohook.button(emoji = '↘️', custom_id = 'downright:v0.0')
 async def downright_button(interaction):
-  await interaction.response('click {}'.format(get_button_name(interaction)))
+  await interaction.response('click {}'.format(interaction.client.utils.get_button_name(interaction)))
 
 explore_view = discohook.View()
 explore_view.add_button_row(upleft_button, up_button, upright_button)#, color_button)

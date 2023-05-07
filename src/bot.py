@@ -1,10 +1,9 @@
 import os
 import traceback
 import discohook
-from .classes.database import Database
+from .extras import constants, database, utils
 from .cogs.help import help_command
 from .cogs.canvas import canvas_command
-from . import constants
 
 def run():
   
@@ -15,11 +14,10 @@ def run():
     token = os.getenv('TOKEN')
   )
 
-  # Attach constants
+  # Attach constants, database, helper functions
   app.constants = constants
-
-  # Attach database
-  app.db = Database(os.getenv('DB'))
+  app.db = database.Database(os.getenv('DB'))
+  app.utils = utils
 
   # Add canvas data to app on startup (cached)
   @app.on_event('startup')
