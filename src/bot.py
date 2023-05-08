@@ -22,9 +22,12 @@ def run():
   app.utils = utils
 
   # Add canvas data to app on startup (cache)
-  @app.on_event('startup')
-  async def startup_event():
-    app.grid = await app.db.dump()
+  # Simulate startup event with middleware since deta can't see it
+  @app.middleware('http') # @app.on_event('startup')
+  async def startup_event(request, call_next):
+    if not hasattr(app, 'grid'):
+      app.grid = await app.db.dump()
+    return await call_next(request)
 
   # Cleanup sessions on shutdown (for local hosting)
   @app.on_event('shutdown')

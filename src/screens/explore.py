@@ -74,7 +74,7 @@ async def left_button(interaction):
 @discohook.button(emoji = '🆗', custom_id = 'place:v0.0')
 async def place_button(interaction):
   cooldown = interaction.client.cooldowns.get(interaction.author.id)
-  if cooldown and cooldown < time.time() + 20:
+  if cooldown and cooldown + 20 > time.time():
     return await interaction.response(utils.locale_text(interaction, 'cooldown_text'), ephemeral = True)
   cursor = utils.get_cursor(interaction)
   x, y = cursor[:2]
