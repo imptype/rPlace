@@ -1,0 +1,16 @@
+{
+  "help_text" : "Hey, the only command available is `/canvas`, to explore and re-color pixels on the global canvas.",
+  "welcome_title" : "Welcome to r/Place!",
+  "welcome_line_1" : "Canvas Size: {0}x{0}",
+  "welcome_line_2" : "Click **🔍 Explore** to start exploring!",
+  "explore_title" : "Selecting Tile ({}, {})",
+  "empty_tile" : "Nobody has painted here yet.",
+  "explore_button" : "Explore",
+  "color_button" : "Color: #{:06x}",
+  "jump_button" : "Jump to (X, Y)",
+  "return_button" : "Back To Home",
+  "step_select" : "Step Size: {}",
+  "zoom_select" : "Zoom: {0}x{0}",
+  "wip" : "This feature is not available yet.",
+  "cooldown_text" : "Please wait, you are on a cooldown."
+}

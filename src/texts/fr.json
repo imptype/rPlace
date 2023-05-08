@@ -1,0 +1,16 @@
+{
+  "help_text" : "Bonjour, la seule commande disponible est /canvas, pour explorer et recolorer les pixels sur la toile globale.",
+  "welcome_title" : "Bienvenue sur r/Place !",
+  "welcome_line_1" : "Taille de la toile : {0}x{0}",
+  "welcome_line_2" : "Cliquez sur **🔍 Explorer** pour commencer à explorer !",
+  "explore_title" : "Sélection de la tuile ({}, {})",
+  "empty_tile" : "Personne n'a encore peint ici.",
+  "explore_button" : "Explorer",
+  "color_button" : "Couleur : #{:06x}",
+  "jump_button" : "Aller à (X, Y)",
+  "return_button" : "Retour à l'accueil",
+  "step_select" : "Taille du pas : {}",
+  "zoom_select" : "Zoom : {0}x{0}",
+  "wip" : "Cette fonctionnalité n’est pas encore disponible.",
+  "cooldown_text" : "Veuillez patienter, vous êtes en cooldown."
+}

@@ -1,15 +1,8 @@
 import discohook
-from ..views.startview import start_view
+from ..screens import start
 
 @discohook.command('canvas', 'interact with the global canvas!')
 async def canvas_command(interaction):
-  embed = discohook.Embed(
-    title = 'Welcome to r/Place!',
-    description = '\n'.join([
-      'Canvas Size: 250x250',
-      '',
-      'Click 🔍 to explore.'
-    ]),
-    color = interaction.client.constants.COLOR_BLURPLE
-  )
-  await interaction.response(embed = embed, view = start_view)
+  file = await interaction.client.utils.draw_map(interaction)
+  embed = interaction.client.utils.get_start_embed(interaction)
+  await interaction.response(embed = embed, view = start.view, file = file)
