@@ -50,7 +50,7 @@ def convert_cell(i):
   """
   Converts cell of json data into RGB tuple
   """
-  if isinstance(i, dict) and 'c' in i:
+  if isinstance(i, dict):
     return ((i['c'] >> 16) & 255, (i['c'] >> 8) & 255, i['c'] & 255)
   return (255, 255, 255)
 
@@ -105,38 +105,32 @@ async def draw_map(interaction, cursor = None):
   buffer.seek(0)
   return discohook.File('map.png', content = buffer)
 
-def locale_text(interaction, key):
-  return interaction.client.texts.get(interaction.locale, interaction.client.texts['en'])[key]
+def locale_text(interaction, key, *format_args):
+  text = interaction.client.texts.get(interaction.locale, interaction.client.texts['en'])[key]
+  if format_args:
+    text = text.format(*format_args)
+  return text
 
-def get_explore_embed(interaction, x, y):
-  title = locale_text(interaction, 'explore_title').format(x, y)
-  tile = interaction.client.grid[x][y]
-  if tile:
-    description = '\n'.join([
-      '🎨 #{:06x}'.format(tile['c']),
-      '🧍 <@{}>'.format(tile['u']),
-      '🏠 Server: {}'.format(tile['s']),
-      '⏰ <t:{}:R>'.format(tile['t'])
-    ])
-  else:
-    description = locale_text(interaction, 'empty_tile')
-  embed = discohook.Embed(
-    title = title,
-    description = description,
-    color = interaction.client.constants.COLOR_BLURPLE
-  )
-  embed.image('attachment://map.png')
-  return embed
+def locale_button(interaction, button, *format_args):
+  label = locale_text(interaction, button.label)
+  if format_args:
+    label = label.format(*format_args)
+  custom_id = button.custom_id + ':dynamic'
+  return discohook.Button(label, url = button.url, style = button.style, disabled = button.disabled, emoji = button.emoji, custom_id = custom_id)
 
-def get_start_embed(interaction):
-  embed = discohook.Embed(
-    title = locale_text(interaction, 'welcome_title'),
-    description = '\n'.join([
-      locale_text(interaction, 'welcome_line_1').format(interaction.client.db.size),
-      '',
-      locale_text(interaction, 'welcome_line_2')
-    ]),
-    color = interaction.client.constants.COLOR_BLURPLE
-  )
-  embed.image('attachment://map.png')
-  return embed
+def locale_select(interaction, select, *format_args):
+  placeholder = locale_text(interaction, select.placeholder)
+  if format_args:
+    placeholder = placeholder.format(*format_args)
+  custom_id = select.custom_id + ':dynamic'
+  return discohook.Select(select.options, placeholder = placeholder, custom_id = custom_id) 
+
+def before_invoke(interaction):
+  interaction.client.users[int(interaction.author.id)] = interaction.author.name
+  # guilds are only cached when fetched because interaction data only holds guild id
+  # interaction.client.guilds[int(interaction.guild_id)] = interaction.guild
+
+def plural_suffix(n):
+  if n == 1:
+    return ''
+  return 's'

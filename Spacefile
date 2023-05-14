@@ -5,6 +5,11 @@ micros:
     src: .
     engine: python3.9
     primary: true
+    include:
+      - main.py
+      - src/
+    run: uvicorn main:app
+    dev: uvicorn main:app --reload --env-file .env
     public_routes:
       - '/interactions'
     presets:

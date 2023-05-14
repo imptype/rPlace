@@ -48,7 +48,7 @@ class Database(deta.Deta):
     q = deta.Query()
     results = await self.test.fetch([q])
     data = await results.json()
-    rows = sorted(data['items'], key = lambda x : x['key']) # order-by key (Y), 62,500 loops
+    rows = sorted(data['items'], key = lambda x : int(x['key'])) # order-by key (Y), 62,500 loops
     if not rows or len(rows) != self.size: # rerun after setting up
       return None
     n = self.size

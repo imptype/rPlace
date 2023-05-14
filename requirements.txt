@@ -1,4 +1,5 @@
-git+https://github.com/jnsougata/discohook
+git+https://github.com/jnsougata/discohook.git@b9e3461223a9e7b4e2387fe4786971f5f6f7cca4 # for http.fetch_user and modal customid parser
 git+https://github.com/jnsougata/deta
 Pillow
 numpy
+uvicorn

@@ -1,8 +1,8 @@
 import discohook
-from ..screens import start
+from ..screens.start import StartView
 
 @discohook.command('canvas', 'interact with the global canvas!')
 async def canvas_command(interaction):
-  file = await interaction.client.utils.draw_map(interaction)
-  embed = interaction.client.utils.get_start_embed(interaction)
-  await interaction.response(embed = embed, view = start.view, file = file)
+  interaction.client.utils.before_invoke(interaction)
+  view = StartView(interaction)
+  await interaction.response(embed = await view.embed(), view = view, file = await view.draw())
