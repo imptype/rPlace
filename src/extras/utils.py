@@ -126,7 +126,7 @@ def locale_select(interaction, select, *format_args):
   return discohook.Select(select.options, placeholder = placeholder, custom_id = custom_id) 
 
 def before_invoke(interaction):
-  interaction.client.users[int(interaction.author.id)] = interaction.author.name
+  interaction.client.users[int(interaction.author.id)] = interaction.author
   # guilds are only cached when fetched because interaction data only holds guild id
   # interaction.client.guilds[int(interaction.guild_id)] = interaction.guild
 
