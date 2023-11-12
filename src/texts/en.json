@@ -1,0 +1,32 @@
+{
+  "help_text" : "Hey, the only command available is `/canvas`, to explore and re-color pixels on the global canvas.",
+  "welcome_title" : "Welcome to r/Place!",
+  "welcome_line_1" : "Canvas Size: {0}x{0}",
+  "welcome_line_2" : "Click **🔍 Explore** to start exploring!",
+  "explore_title" : "Selecting Tile ({}, {})",
+  "empty_tile" : "Nobody has painted here yet.",
+  "reached_border" : "Reached the map border!",
+  "same_color" : "The tile ({}, {}) is already the color `#{:06x}`!",
+  "live_text" : "{:,} user{} {} active and {:,} pixel{} placed recently.",
+
+  "singular_verb" : "is",
+  "plural_verb" : "are",
+
+  "explore_button" : "Explore",
+  "color_button" : "Color: #{:06x}",
+  "jump_button" : "Jump to (X, Y)",
+  "return_button" : "Back To Home",
+  "step_select" : "Step Size: {}",
+  "zoom_select" : "Zoom: {0}x{0}",
+
+  "color_input" : "Color",
+  "color_hint" : "A hex string like \"#ffab12\" or a number <= 16777215.",
+  "jump_hint" : "A number in the range 0-{}.",
+
+  "color_number_error" : "Color `{}` is not a color!",
+  "color_range_error" : "Color `{}` is out of range!",
+  "coord_number_error" : "{}-coordinate `{}` is not a number!",
+  "coord_range_error" : "{}-coordinate `{}` is out of range!",
+
+  "wip" : "This feature is not available yet."
+}

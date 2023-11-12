@@ -1,0 +1,22 @@
+# Spacefile Docs: https://go.deta.dev/docs/spacefile/v0
+v: 0
+micros:
+  - name: rPlace
+    src: .
+    engine: python3.9
+    primary: true
+    include:
+      - main.py
+      - src/
+    run: uvicorn main:app
+    dev: uvicorn main:app --reload --env-file .env
+    public_routes:
+      - '/interactions'
+    presets:
+      env:
+      - name: PASS
+      - name: ID
+      - name: KEY
+      - name: TOKEN
+      - name: LOG
+      - name: DB

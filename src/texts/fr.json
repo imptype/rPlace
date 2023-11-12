@@ -1,0 +1,32 @@
+{
+  "help_text" : "Bonjour, la seule commande disponible est /canvas, pour explorer et recolorer les pixels sur la toile globale.",
+  "welcome_title" : "Bienvenue sur r/Place!",
+  "welcome_line_1" : "Taille de la toile: {0}x{0}",
+  "welcome_line_2" : "Cliquez sur **🔍 Explorer** pour commencer à explorer!",
+  "explore_title" : "Sélection de la tuile ({}, {})",
+  "empty_tile" : "Personne n'a encore peint ici.",
+  "reached_border" : "Atteint la frontière de la carte!",
+  "same_color" : "La tuile ({}, {}) est déjà de cette couleur `#{:06x}`!",
+  "live_text" : "{:,} utilisateur{} {} actif et {:,} pixel{} placé récemment.",
+
+  "singular_verb" : "est",
+  "plural_verb" : "sont",
+
+  "explore_button" : "Explorer",
+  "color_button" : "Couleur: #{:06x}",
+  "jump_button" : "Aller à (X, Y)",
+  "return_button" : "Retour à l'accueil",
+  "step_select" : "Taille du pas: {}",
+  "zoom_select" : "Zoom: {0}x{0}",
+
+  "color_input" : "Couleur",
+  "color_hint" : "Une chaîne hexadécimale comme \"#ffab12\" ou un nombre <= 16777215.",
+  "jump_hint" : "Un nombre compris entre 0 et {}.",
+
+  "color_number_error" : "Couleur `{}` n'est pas une couleur!",
+  "color_range_error" : "Couleur `{}` est hors gamme!",
+  "coord_number_error" : "Coordonnée {} `{}` n'est pas un nombre!",
+  "coord_range_error" : "Coordonnée {} `{}` est hors gamme!",
+
+  "wip" : "Cette fonctionnalité n'est pas encore disponible."
+}
