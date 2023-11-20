@@ -18,8 +18,16 @@ class StartView(discohook.View):
   def __init__(self, interaction = None):
     super().__init__()
     if interaction:
-      import json
-      print(json.dumps(interaction.payload, indent = 2))
+
+      if interaction.kind == 2: # app command, just started
+        key = 'data'
+      else: # 3, 5 component or modal interaction, edited
+        key = 'interaction'
+      
+      is_global = interaction.payload[key]['name'] == 'canvas'
+
+      print('is global?', is_global)
+
       self.interaction = interaction
       self.embed = discohook.Embed(
         'Welcome to r/Place!',

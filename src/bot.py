@@ -13,7 +13,7 @@ from .cogs.canvas import canvas_command
 from .cogs.localcanvas import local_canvas_command
 from .cogs.test import test_command
 from .screens.start import StartView
-from .screens.explore import ExploreView, color_modal
+from .screens.explore import ExploreView, color_modal, jump_modal
 
 def run():
   
