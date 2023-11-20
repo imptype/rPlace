@@ -1,9 +1,10 @@
 import discohook
+from ..screens.explore import ExploreView
 from ..utils.constants import COLOR_BLURPLE
 
 @discohook.button.new('Explore', emoji = '🔍', custom_id = 'explore:v0.0')
 async def explore_button(interaction):
-  await interaction.response.send('clicked explore button')
+  await ExploreView(interaction).update()
 
 @discohook.button.new(emoji = '🏆', custom_id = 'top:v0.0', style = discohook.ButtonStyle.green)
 async def top_button(interaction):
@@ -31,3 +32,6 @@ class StartView(discohook.View):
   
   async def send(self):
     await self.interaction.response.send(embed = self.embed, view = self)
+
+  async def update(self):
+    await self.interaction.response.update_message(embed = self.embed, view = self)

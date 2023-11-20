@@ -12,6 +12,8 @@ from .cogs.help import help_command
 from .cogs.canvas import canvas_command
 from .cogs.localcanvas import local_canvas_command
 from .cogs.test import test_command
+from .screens.start import StartView
+from .screens.explore import ExploreView
 
 def run():
   
@@ -96,8 +98,8 @@ def run():
   app.maintenance = os.getenv('MAIN')
 
   # Load persistent view/components
-  #app.load_components(StartView())
-  #app.load_components(ExploreView())
+  app.load_components(StartView())
+  app.load_components(ExploreView())
   #app.active_components[color_modal.custom_id] = color_modal
   #app.active_components[jump_modal.custom_id] = jump_modal
 
