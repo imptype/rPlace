@@ -14,9 +14,13 @@ async def up_button(interaction):
 async def upright_button(interaction):
   await interaction.response.send('clicked upright')
 
+@discohook.modal.new('Color Modal', fields = [discohook.TextInput('test', 'test')], custom_id = 'color_modal:v0.0')
+async def color_modal(interaction, test):
+  await interaction.response.send('submit color modal {}'.format(test))
+
 @discohook.button.new('Color: #000000', custom_id = 'color:v0.0', style = discohook.ButtonStyle.grey)
 async def color_button(interaction):
-  await interaction.response.send('clicked color')
+  await interaction.response.send_modal(color_modal)
 
 @discohook.button.new(emoji = '⬅️', custom_id = 'left:v0.0')
 async def left_button(interaction):
@@ -29,6 +33,10 @@ async def place_button(interaction):
 @discohook.button.new(emoji = '➡️', custom_id = 'right:v0.0')
 async def right_button(interaction):
   await interaction.response.send('clicked right')
+
+@discohook.modal.new('Jump Modal', fields = [discohook.TextInput('test', 'test')], custom_id = 'jump_modal:v0.0')
+async def jump_modal(interaction, test):
+  await interaction.response.send('submit jump modal {}'.format(test))
 
 @discohook.button.new('Jump to (X, Y)', style = discohook.ButtonStyle.grey, custom_id = 'jump:v0.0')
 async def jump_button(interaction):

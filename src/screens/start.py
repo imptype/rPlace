@@ -18,6 +18,8 @@ class StartView(discohook.View):
   def __init__(self, interaction = None):
     super().__init__()
     if interaction:
+      import json
+      print(json.dumps(interaction.payload, indent = 2))
       self.interaction = interaction
       self.embed = discohook.Embed(
         'Welcome to r/Place!',
