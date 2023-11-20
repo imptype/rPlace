@@ -2,9 +2,10 @@ import time
 import deta
 
 class Database(deta.Deta):
-  def __init__(self, key):
+  def __init__(self, app, key):
     super().__init__(key)
-    self.test = self.base('test')#self.base('global') # or canvas
+    self.app = app
+"""   self.test = self.base('test')#self.base('global') # or canvas
     self.size = 25
 
   async def reset(self):
@@ -66,4 +67,4 @@ class Database(deta.Deta):
     updater = deta.Updater()
     updater.set(str(x), data)
     await self.test.update(str(y), updater)
-    print('Updated', x, y, '!')
+    print('Updated', x, y, '!')"""

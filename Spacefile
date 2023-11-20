@@ -14,9 +14,11 @@ micros:
       - '/interactions'
     presets:
       env:
+      - name: START
       - name: PASS
       - name: ID
       - name: KEY
       - name: TOKEN
       - name: LOG
       - name: DB
+      - name: MAIN
