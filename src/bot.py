@@ -5,8 +5,8 @@ import datetime
 import traceback
 import contextlib
 import discohook
-from starlette.responses import Response, PlainTextResponse
-from .utils import constants, database, helpers, counter
+from starlette.responses import PlainTextResponse
+from .utils import constants, database, helpers
 from .cogs.ping import ping_command
 from .cogs.help import help_command
 from .cogs.canvas import canvas_command
@@ -47,9 +47,9 @@ def run():
     if isinstance(error, discohook.errors.CheckFailure):
       return print('Ignoring check failure', str(interaction.author), interaction.data['custom_id'].split(':')[0])
     if interaction.responded:
-      await interaction.response.followup('Sorry, an error has occured.')
+      await interaction.response.followup('Sorry, an error has occured (after responding).')
     else:
-      await interaction.response.send('Sorry, an error has occured (after responding).')
+      await interaction.response.send('Sorry, an error has occured.')
     trace = tuple(traceback.TracebackException.from_exception(error).format())
     app.errors.append(trace)
     text = ''.join(trace)
@@ -75,15 +75,12 @@ def run():
     with open(path) as f:
       app.texts[lang] = json.loads(f.read())
 
-  # Attach caches
-  #app.cooldowns = {} # userid : time (currently unused, reserved for future use?)
-  #app.guilds = {} # serverid : None|Guild
-  #app.users = {} # userid : None|PartialUser
-  #app.active_users = counter.ExpiringCounter(60) # by userid in move, pop after 1 min of inactivity
-  #app.active_pixels = counter.ExpiringCounter(60) # by place button's interactionid, pop after 1 min 
+  # Attach configs
+  app.refreshed_at = 0
+  app.cursor = None
 
-  # Set bot deployed at timestamp (unused)
-  # app.deployed_at
+  # Attach cache
+  app.pixels = {} # local_id : grid, this is always updated on pixel placement, not for movement debounce of 1 min though
 
   # Set bot started at timestamp
   app.started_at = datetime.datetime.utcnow()
@@ -112,6 +109,25 @@ def run():
   )
   if app.test:
     app.add_commands(test_command)
+
+  # Attach / route for debugging
+  @app.route('/', methods = ['GET'])
+  async def root(request):
+    return PlainTextResponse(
+      '\n'.join([
+        'Started: {}'.format(app.started_at),
+        '',
+        'Test: {}'.format(app.test),
+        '',
+        'Pixels Cache: {}'.format('\n'.join([
+          '{}: {}'.format(local_id, len(grid))
+          for local_id, grid in app.pixels.items()
+        ])),
+        'Stats Cache: {}'.format(0),
+        '',
+        'Errors: {}'.format(json.dumps(app.errors, indent = 2)),
+      ])
+    )
 
   # Return app object
   return app

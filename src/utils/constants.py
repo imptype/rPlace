@@ -1,5 +1,5 @@
 """
-Contains constants, not secrets but things that might change or just odd.
+Contains constants, not secrets but things that might change.
 """
 
 # Bot stuff
@@ -13,3 +13,8 @@ COLOR_BLURPLE = 0x5865F2
 COLOR_GREEN = 0x2ECC71
 COLOR_ORANGE = 0xE67E22
 COLOR_RED = 0xE74C3C
+
+# Other
+REFRESH_DEBOUNCE = 60 # for movement, delay refresh by 60 seconds, refresh always on place though
+CANVAS_SIZE = 1000 # always
+IMAGE_SIZE = 1024 # size of maze images in pixels

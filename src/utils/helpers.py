@@ -1,9 +1,45 @@
-import io
-import asyncio
-import discohook
-from PIL import Image
-import numpy as np
+"""
+Helper functions or code that is just odd.
+"""
+import time
 
+def get_local_id(interaction):
+  if interaction.kind == 2: # app command, just started
+    value = interaction.payload['data']
+  else: # 3, 5 component or modal interaction, edited
+    value = interaction.payload['message']['interaction']
+
+  local_id = None
+  if value['name'] != 'canvas': # is local canvas command
+    local_id = interaction.guild_id or interaction.user_id # guild_id is None meaning it is in DMs
+  
+  return local_id
+
+async def get_grid(interaction, force = False):
+  local_id = get_local_id(interaction)
+  app = interaction.client
+  helpers = app.helpers
+  cache = app.pixels
+
+  grid = cache.get(local_id)
+  if force or not grid or app.refreshed_at + helpers.REFRESH_DEBOUNCE < time.time():
+    grid = await interaction.client.db.get_grid(local_id)
+    cache[local_id] = grid
+    app.refreshed_at = time.time()
+  
+  return grid
+
+"""
+async def draw_grid():
+  im = Image.new('RGB', (1000, 1000), color = (255, 153, 255))
+  im = im.resize((1024, 1024), Image.Resampling.NEAREST)
+  
+  # Save
+  buffer = io.BytesIO()
+  im.save(buffer, 'PNG')
+  return buffer
+"""
+'''
 def get_button_name(interaction):
   for row in interaction.payload['message']['components']:
     for component in row['components']:
@@ -134,3 +170,5 @@ def plural_suffix(n):
   if n == 1:
     return ''
   return 's'
+
+'''

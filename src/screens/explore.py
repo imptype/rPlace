@@ -1,6 +1,11 @@
+import io
+import asyncio
 import discohook
+import numpy as np
+from PIL import Image
 from . import start # .start.StartView is circular import
-from ..utils.constants import COLOR_BLURPLE
+from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE
+from ..utils.helpers import get_grid
 
 @discohook.button.new(emoji = '↖️', custom_id = 'upleft:v0.0')
 async def upleft_button(interaction):
@@ -16,8 +21,6 @@ async def upright_button(interaction):
 
 @discohook.modal.new('Color Modal', fields = [discohook.TextInput('test', 'test')], custom_id = 'color_modal:v0.0')
 async def color_modal(interaction, test):
-  import json
-  print(json.dumps(interaction.payload, indent = 2))
   await interaction.response.send('submit color modal {}'.format(test))
 
 @discohook.button.new('Color: #000000', custom_id = 'color:v0.0', style = discohook.ButtonStyle.grey)
@@ -100,5 +103,80 @@ class ExploreView(discohook.View):
     self.add_select(step_select)
     self.add_select(zoom_select)
 
-  async def update(self): # need a setup above here to ainit
+  async def setup(self, data = None): # ainit
+  
+    grid = await get_grid(self.interaction)
+
+    custom_id = 'upleft:v0.0:999:997:11:1:ff0000:1700782616111'
+
+    cursor = tuple(map(int, custom_id.split(':')[2:5]))
+
+    # calculate pointer cursor
+    x, y, zoom = cursor[:3]
+    radius = int(zoom/2)
+    pointer = [radius] * 2
+
+    startx = x - radius
+    if startx < 0:
+      startx = 0
+      pointer[0] = x
+    elif x + radius > CANVAS_SIZE - 1:
+      startx = CANVAS_SIZE - zoom
+      pointer[0] = zoom - (CANVAS_SIZE - x)
+
+    starty = y - radius
+    if starty < 0:
+      starty = 0
+      pointer[1] = y
+    elif y + radius > CANVAS_SIZE - 1:
+      starty = CANVAS_SIZE - zoom
+      pointer[1] = CANVAS_SIZE - y - 1
+
+    # draw canvas
+    a = np.empty((zoom, zoom, 3), np.uint8)
+    for i in range(zoom):
+      y_key = starty + i
+      if y_key in grid:
+        pass # doesnt exist yet, no idea
+      else: # new grids
+        a[i] = np.full((zoom, 3), 255)
+
+    bim = Image.fromarray(a)
+    app = self.interaction.client
+
+    # draw cursor if not cached
+    n = 8 # cursor is 8px in size
+    if not app.cursor:
+      s = 3 # arrow width is 3px
+      c = (0, 187, 212, 255) # blue tint
+      a = np.full((n, n, 4), (0, 0, 0, 0), np.uint8)
+
+      # widths, 3px top left, right, bottom, right
+      a[0, :s] = c 
+      a[-1, :s] = c
+      a[0, -s:] = c
+      a[-1, -s:] = c
+
+      # heights, 2px
+      a[1:s, 0] = c
+      a[1:s, -1] = c
+      a[-s:-1, 0] = c
+      a[-s:-1, -1] = c
+
+      cim = Image.fromarray(a)
+      app.cursor = cim
+    
+    def blocking():
+      im = bim.resize(np.array(bim.size) * n, Image.Resampling.NEAREST)
+      im.paste(app.cursor, tuple(np.array(pointer) * n), app.cursor)  # assuming max size doesn't exceed 128, this is fine
+      return im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
+
+    im = await asyncio.to_thread(blocking)
+    buffer = io.BytesIO()
+    im.save(buffer, 'PNG')
+
+    self.embed.set_image(discohook.File('map.png', content = buffer.getvalue()))
+
+  async def update(self, data = None):
+    await self.setup(data)
     await self.interaction.response.update_message(embed = self.embed, view = self)

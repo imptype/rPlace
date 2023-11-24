@@ -1,10 +1,27 @@
 import time
-import deta
+from deta import Deta, Query
 
-class Database(deta.Deta):
+class Database(Deta):
   def __init__(self, app, key):
     super().__init__(key)
     self.app = app
+    self.pixels = self.base('pixels')
+
+  async def get_grid(self, local_id):
+    query = Query()
+    if local_id:
+      query.equals('local_id', local_id)
+    
+    grid = {}
+    for record in (await self.pixels.fetch([query]))['items']:
+      k = record['key']
+      k = int(''.join([k[:-1].lstrip('0'), k[-1]])) # convert 000, 020 to 0, 20
+      del record['key']
+      if local_id:
+        del record['local_id']
+      grid[k] = record
+    return grid
+
 """   self.test = self.base('test')#self.base('global') # or canvas
     self.size = 25
 
