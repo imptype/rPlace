@@ -1,7 +1,9 @@
 """
 Helper functions or code that is just odd.
 """
+
 import time
+import discohook
 
 def is_local(interaction):
   if interaction.kind == 2: # app command, just started
@@ -29,6 +31,33 @@ async def get_grid(interaction, force = False):
     app.refreshed_at = time.time()
   
   return grid
+
+async def get_username(interaction, user_id):
+  cache = interaction.client.users
+  username = cache.get(user_id)
+  if username is None:
+    resp = await interaction.client.http.fetch_user(str(user_id))
+    if resp.status == 200:
+      data = await resp.json()
+      user = discohook.User(data, interaction.client)
+      username = user.name if user.discriminator == 0 else '{}#{}'.format(user.name, user.discriminator)
+    else:
+      username = False # indicates Unknown user / fetch failed
+    cache[user_id] = username
+  return username
+
+async def get_guild_name(interaction, guild_id):
+  cache = interaction.client.guilds
+  guild_name = cache.get(guild_id)
+  if guild_name is None:
+    try:
+      guild = await interaction.client.fetch_guild(str(guild_id))
+      guild_name = guild.name
+    except: # fails if not mutual servers or on server widget/server discovery
+      guild = False # indicates Unknown user / fetch failed
+    cache[guild_id] = guild_name
+  return guild_name
+
 
 """
 async def draw_grid():

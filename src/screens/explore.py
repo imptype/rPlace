@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE
-from ..utils.helpers import get_grid, is_local
+from ..utils.helpers import get_grid, is_local, get_username, get_guild_name
 
 def get_values(interaction):
   return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
@@ -67,7 +67,28 @@ async def left_button(interaction):
 
 @discohook.button.new(emoji = '🆗', custom_id = 'place:v0.0')
 async def place_button(interaction):
-  await interaction.response.send('clicked place')
+  x, y, zoom, step, color, _timestamp = get_values(interaction)
+  
+  grid = await get_grid(interaction, True) # force refresh
+
+  tile = grid.get(y, {}).get(str(x))
+
+  timestamp = int(time.time() * 1000)
+
+  # make tile if doesn't exist [0 color, 1 timestamp, 2 count, 3 userid:None, 4guildidNone]
+  if not tile:
+    if is_local(interaction): # /local-canvas
+      if interaction.guild_id: # /local-canvas in guild
+        tile = [color, timestamp, 0, interaction.user.id]
+      else: # /local-canvas in DMs
+        tile = [color, timestamp, 0]
+    else: # /canvas
+      if interaction.guild_id: # /canvas in guild
+        tile = [color, timestamp, 0, interaction.user.id, interaction.guild_id]
+      else: # /canvas in DMs
+        tile = [color, timestamp, 0, interaction.user.id]
+
+  await interaction.response.send(f'clicked place at {x} {y} with color {color}!!!')
 
 @discohook.button.new(emoji = '➡️', custom_id = 'right:v0.0')
 async def right_button(interaction):
@@ -140,28 +161,50 @@ class ExploreView(discohook.View):
       color = 0
       timestamp = int(time.time() * 1000)
       
+    app = self.interaction.client
     grid = await get_grid(self.interaction)
 
     pixel = grid.get(y, {}).get(str(x))
 
-    # [0 color, 1 timestamp, 2 count, 3 userid\doesntdm local, 4 username no dm local, 5 guildid/doesntexistiflocal+fromdms, 6 guildname/doesntexistiflocal+dms]
+    # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
     if pixel:
       text = '🎨 #{}'.format(pixel[0])
+
       if self.interaction.guild_id: # not in dms
-        text += '\n🧍 <@{}> | {}'.format(*pixel[2:5])
-        if not is_local(self.interaction): # not local canvas command
-          url = 'https://discord.com/servers/'
-          text += '\n🏠 {}'.format(
-            '[{}]({})'.format(pixel[5], url.format(pixel[6]))
-            if len(pixel) > 5
-            else '*Bot\'s DMs*'
-          )
+
+        user_id = pixel[3]
+        tasks = [get_username(self.interaction, user_id)]
+
+        is_local_check = is_local(self.interaction)
+        if not is_local_check: # not local canvas command
+          if len(pixel) == 4: # from user DMs, 0 1 2 3, guild id not included
+            guild_id = pixel[4]
+            tasks.append(get_guild_name(self.interaction, guild_id))
+        
+        results = await asyncio.gather(*tasks) # point is to save time by doing both requests at the same time
+        
+        username = results[0]
+        text += '\n🧍 {} | <@{}>'.format(
+          username or '*Unknown User*',
+          user_id 
+        )
+
+        if not is_local_check: # this is global canvas, include guild as well, no matter if DMs
+          if len(pixel) == 4: # from user DMs, 0 1 2 3, guild id not included
+            guild_text = '*Bot\'s DMs*'
+          else:
+            guild_name = results[1] or '*Unknown Server*'
+            url = 'https://discord.com/servers/{}'.format(guild_id)
+            guild_text = '[{}]({})'.format(guild_name, url)
+          text += '\n🏠 {}'.format(guild_text)
+
       text += '\n⏰ <t:{}:R>'.format(pixel[1])
+
     else:
       if self.interaction.guild_id:
-        text = 'You haven\'t painted here yet.'
-      else:
         text = 'Nobody has painted here yet.'
+      else:
+        text = 'You haven\'t painted here yet.'
 
     self.embed = discohook.Embed(
       'Selecting Tile ({}, {})'.format(x, y),
@@ -200,7 +243,6 @@ class ExploreView(discohook.View):
         a[i] = np.full((zoom, 3), 255)
 
     bim = Image.fromarray(a)
-    app = self.interaction.client
 
     # draw cursor if not cached
     n = 8 # cursor is 8px in size
