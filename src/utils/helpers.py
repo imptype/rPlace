@@ -3,16 +3,17 @@ Helper functions or code that is just odd.
 """
 import time
 
-def get_local_id(interaction):
+def is_local(interaction):
   if interaction.kind == 2: # app command, just started
     value = interaction.payload['data']
   else: # 3, 5 component or modal interaction, edited
     value = interaction.payload['message']['interaction']
+  return value['name'] != 'canvas' # is local canvas command
 
+def get_local_id(interaction):
   local_id = None
-  if value['name'] != 'canvas': # is local canvas command
+  if is_local(interaction): 
     local_id = interaction.guild_id or interaction.user_id # guild_id is None meaning it is in DMs
-  
   return local_id
 
 async def get_grid(interaction, force = False):
