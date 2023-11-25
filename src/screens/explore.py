@@ -8,8 +8,38 @@ from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE
 from ..utils.helpers import get_grid, is_local
 
-async def move(interaction, x, y):
-  await interaction.response.send(f'click {x} {y}')
+def get_values(interaction):
+  return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
+
+async def move(interaction, dx, dy):
+
+  x, y, zoom, step, color, _timestamp = get_values(interaction)
+
+  # apply step magnitude
+  dx *= step
+  dy *= step
+
+  # apply and fix if it goes beyond borders
+  border = CANVAS_SIZE - 1
+
+  x += dx
+  if x < 0:
+    x = 0
+  elif x > border:
+    x = border
+
+  y += dy
+  if y < 0:
+    y = 0
+  elif y > border:
+    y = border
+
+  # new timestamp
+  timestamp = int(time.time() * 1000)
+
+  # reuse zoom, step and color in new data
+  data = x, y, zoom, step, color, timestamp
+  await ExploreView(interaction).update(data)
 
 @discohook.button.new(emoji = '↖️', custom_id = 'upleft:v0.0')
 async def upleft_button(interaction):
@@ -17,11 +47,11 @@ async def upleft_button(interaction):
 
 @discohook.button.new(emoji = '⬆️', custom_id = 'up:v0.0')
 async def up_button(interaction):
-  await move(interaction, -1, 1)
+  await move(interaction, 0, 1)
 
 @discohook.button.new(emoji = '↗️', custom_id = 'upright:v0.0')
 async def upright_button(interaction):
-  await move(interaction, -1, 1)
+  await move(interaction, 1, 1)
 
 @discohook.modal.new('Color Modal', fields = [discohook.TextInput('test', 'test')], custom_id = 'color_modal:v0.0')
 async def color_modal(interaction, test):
@@ -33,7 +63,7 @@ async def color_button(interaction):
 
 @discohook.button.new(emoji = '⬅️', custom_id = 'left:v0.0')
 async def left_button(interaction):
-  await move(interaction, -1, 1)
+  await move(interaction, -1, 0)
 
 @discohook.button.new(emoji = '🆗', custom_id = 'place:v0.0')
 async def place_button(interaction):
@@ -41,7 +71,7 @@ async def place_button(interaction):
 
 @discohook.button.new(emoji = '➡️', custom_id = 'right:v0.0')
 async def right_button(interaction):
-  await move(interaction, -1, 1)
+  await move(interaction, 1, 0)
 
 @discohook.modal.new('Jump Modal', fields = [discohook.TextInput('test', 'test')], custom_id = 'jump_modal:v0.0')
 async def jump_modal(interaction, test):
@@ -53,15 +83,15 @@ async def jump_button(interaction):
 
 @discohook.button.new(emoji = '↙️', custom_id = 'downleft:v0.0')
 async def downleft_button(interaction):
-  await move(interaction, -1, 1)
+  await move(interaction, -1, -1)
 
 @discohook.button.new(emoji = '⬇️', custom_id = 'down:v0.0')
 async def down_button(interaction):
-  await move(interaction, -1, 1)
+  await move(interaction, 0, -1)
 
 @discohook.button.new(emoji = '↘️', custom_id = 'downright:v0.0')
 async def downright_button(interaction):
-  await move(interaction, -1, 1)
+  await move(interaction, 1, -1)
 
 @discohook.button.new('Back To Home', style = discohook.ButtonStyle.grey, custom_id = 'return:v0.0')
 async def return_button(interaction):
@@ -260,6 +290,6 @@ class ExploreView(discohook.View):
     self.add_select(step_select)
     self.add_select(zoom_select)
 
-  async def update(self, data = None):
+  async def update(self, data = None): # done in update function, saves pointer memory maybe
     await self.setup(data)
     await self.interaction.response.update_message(embed = self.embed, view = self)
