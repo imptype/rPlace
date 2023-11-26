@@ -196,11 +196,8 @@ async def downright_button(interaction):
 async def return_button(interaction):
   await start.StartView(interaction).update()
 
-step_options = [
-  discohook.SelectOption(str(i), str(i))
-  for i in [1, 2, 3, 4, 5, 10, 15, 20, 25]#, 50, 100, 150, 200, 256]
-]
-@discohook.select.text(step_options, placeholder = 'step_select', custom_id = 'step_select:v0.0')
+step_options = [1, 2, 3, 4, 5, 10, 20, 50, 100, 250]
+@discohook.select.text([discohook.SelectOption('', '')], placeholder = 'Select a step size...', custom_id = 'step_select:v0.0')
 async def step_select(interaction, values):
   await interaction.response.send('clicked step select {}'.format(values))
 
@@ -412,11 +409,21 @@ class ExploreView(discohook.View):
       custom_id = color_button.custom_id + ':',
       style = color_button.style
     )
-    
+
+    dynamic_step_select = discohook.Select(
+      discohook.SelectType.text,
+      placeholder = 'Step Size: {}'.format(step),
+      custom_id = step_select.custom_id + ':'      
+    )
+    dynamic_step_select.options = [
+      discohook.SelectOption(str(i), str(i))
+      for i in step_options
+    ]
+      
     self.add_buttons(dynamic_upleft_button, dynamic_up_button, dynamic_upright_button, dynamic_color_button)
     self.add_buttons(dynamic_left_button, dynmaic_place_button, dynamic_right_button, jump_button)
     self.add_buttons(dynamic_downleft_button, dynamic_down_button, dynamic_downright_button, return_button)
-    self.add_select(step_select)
+    self.add_select(dynamic_step_select)
     self.add_select(zoom_select)
 
   async def update(self, data = None): # done in update function, saves pointer memory maybe
