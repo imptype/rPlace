@@ -9,11 +9,12 @@ from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE
 from ..utils.helpers import get_grid, is_local, get_username, get_guild_name, convert_text, revert_text, draw_map
 
+BORDER = CANVAS_SIZE - 1
+
 def get_values(interaction):
   return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
 
 async def move(interaction, dx, dy):
-
   x, y, zoom, step, color, _timestamp = get_values(interaction)
 
   # apply step magnitude
@@ -21,19 +22,17 @@ async def move(interaction, dx, dy):
   dy *= step
 
   # apply and fix if it goes beyond borders
-  border = CANVAS_SIZE - 1
-
   x += dx
   if x < 0:
     x = 0
-  elif x > border:
-    x = border
+  elif x > BORDER:
+    x = BORDER
 
   y += dy
   if y < 0:
     y = 0
-  elif y > border:
-    y = border
+  elif y > BORDER:
+    y = BORDER
 
   # reuse zoom, step and color in new data
   data = x, y, zoom, step, color
@@ -112,13 +111,48 @@ async def place_button(interaction):
 async def right_button(interaction):
   await move(interaction, 1, 0)
 
-@discohook.modal.new('Jump Modal', fields = [discohook.TextInput('test', 'test')], custom_id = 'jump_modal:v0.0')
-async def jump_modal(interaction, test):
-  await interaction.response.send('submit jump modal {}'.format(test))
+jump_fields = [
+  discohook.TextInput('X', 'x', hint = 'A number in the range of 0-{}'.format(BORDER), min_length = 1, max_length = 3, required = True),
+  discohook.TextInput('Y', 'y', hint = 'A number in the range of 0-{}'.format(BORDER), min_length = 1, max_length = 3, required = True)
+]
+@discohook.modal.new('Jump Modal', fields = [], custom_id = 'jump_modal:v0.0')
+async def jump_modal(interaction, x, y):
+
+  # validate timestamp
+  try:
+    _x, _y, zoom, step, color, timestamp = get_values(interaction)
+    print('this is custom id and timestamp', interaction.data['custom_id'], timestamp)
+    assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
+  except: # index error = wrong screen, assert error = wrong timestamp
+    return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
+
+  # validate integers, accepts numbers from other languages
+  if not x.isdecimal():
+    return await interaction.response.send('X coordinate `{}` is not a number!'.format(x), ephemeral = True)
+  elif not y.isdecimal():
+    return await interaction.response.send('Y coordinate `{}` is not a number!'.format(y), ephemeral = True)
+  x = int(x)
+  y = int(y)
+
+  # validate in range, included because of the above, so this is rare
+  if not 0 <= x <= BORDER:
+    return await interaction.response.send('X coordinate `{}` is out of range!'.format(x), ephemeral = True)
+  elif not 0 <= y <= BORDER:
+    return await interaction.response.send('Y coordinate `{}` is out of range!'.format(y), ephemeral = True)
+  
+  # all good, update view
+  data = x, y, zoom, step, color
+  await ExploreView(interaction).update(data)
 
 @discohook.button.new('Jump to (X, Y)', style = discohook.ButtonStyle.grey, custom_id = 'jump:v0.0')
 async def jump_button(interaction):
-  await interaction.response.send_modal(jump_modal)
+  modal = discohook.Modal(
+    jump_modal.title,
+    custom_id = '{}:{}'.format(jump_modal.custom_id, get_values(interaction)[-1])    
+  )
+  for i in jump_fields:
+    modal.rows.append(i.to_dict())
+  await interaction.response.send_modal(modal)
 
 @discohook.button.new(emoji = '↙️', custom_id = 'downleft:v0.0')
 async def downleft_button(interaction):
@@ -238,13 +272,12 @@ class ExploreView(discohook.View):
     # calculate pointer cursor
     radius = int(zoom/2)
     pointer = [radius] * 2
-    border = CANVAS_SIZE - 1
 
     startx = x - radius
     if startx < 0:
       startx = 0
       pointer[0] = x
-    elif x + radius > border:
+    elif x + radius > BORDER:
       startx = CANVAS_SIZE - zoom
       pointer[0] = zoom - (CANVAS_SIZE - x)
 
@@ -252,9 +285,9 @@ class ExploreView(discohook.View):
     if starty < 0:
       starty = 0
       pointer[1] = zoom - 1 - y
-    elif y + radius > border:
+    elif y + radius > BORDER:
       starty = CANVAS_SIZE - zoom
-      pointer[1] = border - y
+      pointer[1] = BORDER - y
 
     # draw canvas
     def blocking():
@@ -297,19 +330,19 @@ class ExploreView(discohook.View):
     dynamic_upleft_button = discohook.Button(
       emoji = upleft_button.emoji,
       custom_id = '{}:{}:{}:{}:{}:{}:{}'.format(upleft_button.custom_id, x, y, zoom, step, color, timestamp),
-      disabled = not x or y == border
+      disabled = not x or y == BORDER
     )
     
     dynamic_up_button = discohook.Button(
       emoji = up_button.emoji,
       custom_id = up_button.custom_id + ':',
-      disabled = y == border
+      disabled = y == BORDER
     )
         
     dynamic_upright_button = discohook.Button(
       emoji = upright_button.emoji,
       custom_id = upright_button.custom_id + ':',
-      disabled = x == border or y == border
+      disabled = x == BORDER or y == BORDER
     )
         
     dynamic_left_button = discohook.Button(
@@ -321,7 +354,7 @@ class ExploreView(discohook.View):
     dynamic_right_button = discohook.Button(
       emoji = right_button.emoji,
       custom_id = right_button.custom_id + ':',
-      disabled = x == border
+      disabled = x == BORDER
     )
         
     dynamic_downleft_button = discohook.Button(
@@ -339,7 +372,7 @@ class ExploreView(discohook.View):
     dynamic_downright_button = discohook.Button(
       emoji = downright_button.emoji,
       custom_id = downright_button.custom_id + ':',
-      disabled = x == border or not y
+      disabled = x == BORDER or not y
     )
     
     dynmaic_place_button = discohook.Button(

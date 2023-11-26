@@ -110,7 +110,7 @@ def draw_map(grid, size, starty = 0, startx = 0): # for sections, starty and sta
           if str(x_key) in grid[y_key]
           else np.full((3), 255)
         )
-        for x_key in range(startx, startx + size)
+        for x_key in range(startx, startx + size) # this ensures X order
       )))
     else: # new grids
       a[i] = np.full((size, 3), 255)
