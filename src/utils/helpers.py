@@ -64,30 +64,30 @@ async def get_guild_name(interaction, guild_id):
 ascii_chars = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
 
 def power_sum(values, base, offset = 0):
-    return sum(value * base ** (index + offset) for index, value in enumerate(values))
+  return sum(value * base ** (index + offset) for index, value in enumerate(values))
 
 def convert_text(text, chars):
-    base = len(chars) + 1
-    chars =  {char : index + 1 for index, char in enumerate(chars)}
-    temp = []
-    result = ''
-    for char in text:
-        value = chars[char] # indexerror = missing that char in char set
-        if value * base ** len(temp) + power_sum(temp, base, 1) > len(ascii_chars): 
-            result += ascii_chars[power_sum(temp, base)]
-            temp = [value]
-        else:
-            temp.append(value)
-    result += ascii_chars[power_sum(temp, base)]
-    return result
+  base = len(chars) + 1
+  chars =  {char : index + 1 for index, char in enumerate(chars)}
+  temp = []
+  result = ''
+  for char in text:
+    value = chars[char] # indexerror = missing that char in char set
+    if value * base ** len(temp) + power_sum(temp, base, 1) > len(ascii_chars): 
+      result += ascii_chars[power_sum(temp, base)]
+      temp = [value]
+    else:
+      temp.append(value)
+  result += ascii_chars[power_sum(temp, base)]
+  return result
     
 def revert_text(text, chars):
-    base = len(chars) + 1
-    chars = list(chars)
-    result = ''
-    for char in text:
-        value = ascii_chars.index(char)
-        while value:
-            result += chars[(value % base) - 1]
-            value //= base
-    return result
+  base = len(chars) + 1
+  chars = list(chars)
+  result = ''
+  for char in text:
+    value = ascii_chars.index(char)
+    while value:
+      result += chars[(value % base) - 1]
+      value //= base
+  return result
