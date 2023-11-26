@@ -17,8 +17,7 @@ class Database(Deta):
 
   async def get_grid(self, local_id):
     query = Query()
-    if local_id:
-      query.equals('local_id', local_id)
+    query.equals('local_id', local_id)
     
     grid = {}
     for record in (await self.pixels.fetch([query]))['items']:
@@ -27,7 +26,6 @@ class Database(Deta):
       del record['key']
       del record['local_id']
       grid[y] = record
-    print('this is grid', grid)
     return grid
   
   async def create_row(self, local_id, y, x, tile):
@@ -38,12 +36,10 @@ class Database(Deta):
       local_id = local_id,
       **kwargs
     )
-    # await self.pixels.insert(record)
-    print('inserted a row!')
+    await self.pixels.insert(record)
 
   async def update_tile(self, local_id, y, x, tile): # make sure row exists, db fetch prior
     key = get_key(local_id, y)
     updater = Updater()
     updater.set(str(x), tile)
-    # await self.pixels.update(key, updater)
-    print('updated a row!')
+    await self.pixels.update(key, updater)

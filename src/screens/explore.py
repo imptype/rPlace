@@ -184,6 +184,8 @@ class ExploreView(discohook.View):
 
     # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
     if pixel:
+      place_disabled = color == pixel[0] # selecting same color
+
       text = '🎨 #{:06x}'.format(pixel[0])
 
       if self.interaction.guild_id: # not in dms
@@ -192,7 +194,11 @@ class ExploreView(discohook.View):
         tasks = [get_username(self.interaction, user_id)]
 
         is_local_check = is_local(self.interaction)
-        if not is_local_check: # not local canvas command
+        if is_local_check: # local canvas command
+          if len(pixel) == 4: # local canvas within a guild            
+            place_disabled = place_disabled and self.interaction.author.id == user_id
+        else: # not local canvas command
+          place_disabled = place_disabled and self.interaction.author.id == user_id
           if len(pixel) == 5: # from user DMs, 0 1 2 3, 4 guild id not included
             guild_id = revert_text(pixel[4], string.digits)
             tasks.append(get_guild_name(self.interaction, guild_id))
@@ -217,6 +223,7 @@ class ExploreView(discohook.View):
       text += '\n⏰ <t:{}:R>'.format(pixel[1])
 
     else:
+      place_disabled = False
       if self.interaction.guild_id:
         text = 'Nobody has painted here yet.'
       else:
@@ -335,8 +342,14 @@ class ExploreView(discohook.View):
       disabled = x == border or not y
     )
     
+    dynmaic_place_button = discohook.Button(
+      emoji = place_button.emoji,
+      custom_id = place_button.custom_id + ':',
+      disabled = place_disabled
+    )
+    
     self.add_buttons(dynamic_upleft_button, dynamic_up_button, dynamic_upright_button, color_button)
-    self.add_buttons(dynamic_left_button, place_button, dynamic_right_button, jump_button)
+    self.add_buttons(dynamic_left_button, dynmaic_place_button, dynamic_right_button, jump_button)
     self.add_buttons(dynamic_downleft_button, dynamic_down_button, dynamic_downright_button, return_button)
     self.add_select(step_select)
     self.add_select(zoom_select)
