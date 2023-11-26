@@ -1,11 +1,9 @@
 import io
 import asyncio
 import discohook
-import numpy as np
-from PIL import Image
 from ..screens.explore import ExploreView
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE
-from ..utils.helpers import get_grid
+from ..utils.helpers import get_grid, draw_map
 
 @discohook.button.new('Explore', emoji = '🔍', custom_id = 'explore:v0.0')
 async def explore_button(interaction):
@@ -40,17 +38,14 @@ class StartView(discohook.View):
     
     grid = await get_grid(self.interaction)
 
+    def blocking():
+      im = draw_map(grid, CANVAS_SIZE)
+      buffer = io.BytesIO()
+      im.save(buffer, 'PNG')
+      return buffer
+
     # draw canvas
-    a = np.empty((CANVAS_SIZE, CANVAS_SIZE, 3), np.uint8)
-    for i in range(CANVAS_SIZE):
-      if i in grid:
-        pass # doesnt exist yet, no idea
-      else: # new grids
-        a[i] = np.full((CANVAS_SIZE, 3), 255)
-    
-    im = await asyncio.to_thread(Image.fromarray, a)
-    buffer = io.BytesIO()
-    im.save(buffer, 'PNG')
+    buffer = await asyncio.to_thread(blocking)
 
     self.embed.set_image(discohook.File('map.png', content = buffer.getvalue()))
   

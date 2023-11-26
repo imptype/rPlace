@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE
-from ..utils.helpers import get_grid, is_local, get_username, get_guild_name, convert_text, revert_text
+from ..utils.helpers import get_grid, is_local, get_username, get_guild_name, convert_text, revert_text, draw_map
 
 def get_values(interaction):
   return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
@@ -105,7 +105,6 @@ async def place_button(interaction):
   
   # update row/cache
   row[x_key] = tile
-  print('this is row and grid', row, grid)
   data = x, y, zoom, step, color
   await ExploreView(interaction).update(data)
 
@@ -251,55 +250,39 @@ class ExploreView(discohook.View):
       pointer[1] = border - y
 
     # draw canvas
-    a = np.empty((zoom, zoom, 3), np.uint8)
-    for i in range(zoom):
-      y_key = starty + i
-      if y_key in grid:
-        now = time.time()
-        a[i] = np.vstack(tuple((
-          (
-            np.array(((grid[y_key][str(x_key)][0] >> 16) & 255, (grid[y_key][str(x_key)][0] >> 8) & 255, grid[y_key][str(x_key)][0] & 255))
-            if str(x_key) in grid[y_key]
-            else np.full((3), 255)
-          )
-          for x_key in range(zoom)
-        )))
-        print('took', time.time() - now)
-      else: # new grids
-        a[i] = np.full((zoom, 3), 255)
-
-    bim = Image.fromarray(a[::-1]) # draw upside down
-
-    # draw cursor if not cached
-    n = 8 # cursor is 8px in size
-    if not app.cursor:
-      s = 3 # arrow width is 3px
-      c = (0, 187, 212, 255) # blue tint
-      a = np.full((n, n, 4), (0, 0, 0, 0), np.uint8)
-
-      # widths, 3px top left, right, bottom, right
-      a[0, :s] = c 
-      a[-1, :s] = c
-      a[0, -s:] = c
-      a[-1, -s:] = c
-
-      # heights, 2px
-      a[1:s, 0] = c
-      a[1:s, -1] = c
-      a[-s:-1, 0] = c
-      a[-s:-1, -1] = c
-
-      cim = Image.fromarray(a)
-      app.cursor = cim
-    
     def blocking():
+      bim = draw_map(grid, zoom, startx, starty)
+
+      # draw cursor if not cached
+      n = 8 # cursor is 8px in size
+      if not app.cursor:
+        s = 3 # arrow width is 3px
+        c = (0, 187, 212, 255) # blue tint
+        a = np.full((n, n, 4), (0, 0, 0, 0), np.uint8)
+
+        # widths, 3px top left, right, bottom, right
+        a[0, :s] = c 
+        a[-1, :s] = c
+        a[0, -s:] = c
+        a[-1, -s:] = c
+
+        # heights, 2px
+        a[1:s, 0] = c
+        a[1:s, -1] = c
+        a[-s:-1, 0] = c
+        a[-s:-1, -1] = c
+
+        cim = Image.fromarray(a)
+        app.cursor = cim
+      
       im = bim.resize(np.array(bim.size) * n, Image.Resampling.NEAREST)
       im.paste(app.cursor, tuple(np.array(pointer) * n), app.cursor)  # assuming max size doesn't exceed 128, this is fine
-      return im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
-
-    im = await asyncio.to_thread(blocking)
-    buffer = io.BytesIO()
-    im.save(buffer, 'PNG')
+      im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
+      buffer = io.BytesIO()
+      im.save(buffer, 'PNG')
+      return buffer
+    
+    buffer = await asyncio.to_thread(blocking)
 
     # get pixel data from grid above and format it into the embed below 
     self.embed.set_image(discohook.File('map.png', content = buffer.getvalue()))

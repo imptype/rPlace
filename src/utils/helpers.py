@@ -4,7 +4,10 @@ Helper functions or code that is just odd.
 
 import time
 import string
+import asyncio
 import discohook
+import numpy as np
+from PIL import Image
 
 def is_local(interaction):
   if interaction.kind == 2: # app command, just started
@@ -29,7 +32,6 @@ async def get_grid(interaction, force = False):
   if force or not grid or app.refreshed_at + app.constants.REFRESH_DEBOUNCE < time.time():
     grid = await interaction.client.db.get_grid(local_id)
     cache[local_id] = grid
-    print('cache', grid)
     app.refreshed_at = time.time()
   
   if force: # need to return local id too for updating db
@@ -96,3 +98,20 @@ def revert_text(text, chars):
       result += chars[(value % base) - 1]
       value //= base
   return result
+
+def draw_map(grid, size, starty = 0, startx = 0): # for sections, starty and startx is given
+  a = np.empty((size, size, 3), np.uint8)
+  for i in range(size):
+    y_key = starty + i
+    if y_key in grid:
+      a[i] = np.vstack(tuple((
+        (
+          np.array(((grid[y_key][str(x_key)][0] >> 16) & 255, (grid[y_key][str(x_key)][0] >> 8) & 255, grid[y_key][str(x_key)][0] & 255))
+          if str(x_key) in grid[y_key]
+          else np.full((3), 255)
+        )
+        for x_key in range(startx, startx + size)
+      )))
+    else: # new grids
+      a[i] = np.full((size, 3), 255)
+  return Image.fromarray(a[::-1]) # draw upside down
