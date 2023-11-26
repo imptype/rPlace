@@ -79,14 +79,16 @@ async def place_button(interaction):
   if not tile:
     if is_local(interaction): # /local-canvas
       if interaction.guild_id: # /local-canvas in guild
-        tile = [color, timestamp, 0, interaction.user.id]
+        tile = [color, timestamp, 0, interaction.author.id]
       else: # /local-canvas in DMs
         tile = [color, timestamp, 0]
     else: # /canvas
       if interaction.guild_id: # /canvas in guild
-        tile = [color, timestamp, 0, interaction.user.id, interaction.guild_id]
+        tile = [color, timestamp, 0, interaction.author.id, interaction.guild_id]
       else: # /canvas in DMs
-        tile = [color, timestamp, 0, interaction.user.id]
+        tile = [color, timestamp, 0, interaction.author.id]
+
+  print('this is tile', tile)
 
   await interaction.response.send(f'clicked place at {x} {y} with color {color}!!!')
 

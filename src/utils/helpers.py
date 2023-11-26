@@ -34,7 +34,8 @@ async def get_grid(interaction, force = False):
 
 async def get_username(interaction, user_id):
   cache = interaction.client.users
-  username = cache.get(user_id)
+  user_key = int(user_id)
+  username = cache.get(user_key)
   if username is None:
     resp = await interaction.client.http.fetch_user(str(user_id))
     if resp.status == 200:
@@ -43,21 +44,53 @@ async def get_username(interaction, user_id):
       username = user.name if user.discriminator == 0 else '{}#{}'.format(user.name, user.discriminator)
     else:
       username = False # indicates Unknown user / fetch failed
-    cache[user_id] = username
+    cache[user_key] = username
   return username
 
 async def get_guild_name(interaction, guild_id):
   cache = interaction.client.guilds
-  guild_name = cache.get(guild_id)
+  guild_key = int(guild_id)
+  guild_name = cache.get(guild_key)
   if guild_name is None:
     try:
-      guild = await interaction.client.fetch_guild(str(guild_id))
+      guild = await interaction.client.fetch_guild(guild_id)
       guild_name = guild.name
     except: # fails if not mutual servers or on server widget/server discovery
       guild = False # indicates Unknown user / fetch failed
-    cache[guild_id] = guild_name
+    cache[guild_key] = guild_name
   return guild_name
 
+# space ' ' is reserved to be delimeter
+ascii_chars = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
+
+def power_sum(values, base, offset = 0):
+    return sum(value * base ** (index + offset) for index, value in enumerate(values))
+
+def convert_text(text, chars):
+    base = len(chars) + 1
+    chars =  {char : index + 1 for index, char in enumerate(chars)}
+    temp = []
+    result = ''
+    for char in text:
+        value = chars[char] # indexerror = missing that char in char set
+        if value * base ** len(temp) + power_sum(temp, base, 1) > len(ascii_chars): 
+            result += ascii_chars[power_sum(temp, base)]
+            temp = [value]
+        else:
+            temp.append(value)
+    result += ascii_chars[power_sum(temp, base)]
+    return result
+    
+def revert_text(text, chars):
+    base = len(chars) + 1
+    chars = list(chars)
+    result = ''
+    for char in text:
+        value = ascii_chars.index(char)
+        while value:
+            result += chars[(value % base) - 1]
+            value //= base
+    return result
 
 """
 async def draw_grid():
