@@ -228,7 +228,16 @@ zoom_options = [
 ]
 @discohook.select.text(zoom_options, placeholder = 'zoom_select', custom_id = 'zoom_select:v0.0')
 async def zoom_select(interaction, values):
-  await interaction.response.send('clicked zoom select {}'.format(values))
+  x, y, old_zoom, step, color, _timestamp = get_values(interaction)
+  zoom = int(values[0])
+  
+  # validate new zoom
+  if zoom == old_zoom:
+    return await interaction.response.send('Zoom `{0}x{0}` is already selected!'.format(zoom), ephemeral = True)
+  
+  # update view
+  data = x, y, zoom, step, color
+  await ExploreView(interaction).update(data)
 
 class ExploreView(discohook.View):
   def __init__(self, interaction = None): # View is persistent if args not given
@@ -432,13 +441,20 @@ class ExploreView(discohook.View):
       placeholder = 'Step Size: {}'.format(step),
       custom_id = step_select.custom_id + ':'      
     )
-    dynamic_step_select.options = step_options
+    dynamic_step_select.options = step_select.options
+
+    dynamic_zoom_select = discohook.Select(
+      discohook.SelectType.text,
+      placeholder = 'Zoom: {0}x{0}'.format(zoom),
+      custom_id = zoom_select.custom_id + ':'      
+    )
+    dynamic_zoom_select.options = zoom_select.options
       
     self.add_buttons(dynamic_upleft_button, dynamic_up_button, dynamic_upright_button, dynamic_color_button)
     self.add_buttons(dynamic_left_button, dynmaic_place_button, dynamic_right_button, jump_button)
     self.add_buttons(dynamic_downleft_button, dynamic_down_button, dynamic_downright_button, return_button)
     self.add_select(dynamic_step_select)
-    self.add_select(zoom_select)
+    self.add_select(dynamic_zoom_select)
 
   async def update(self, data = None): # done in update function, saves pointer memory maybe
     await self.setup(data)
