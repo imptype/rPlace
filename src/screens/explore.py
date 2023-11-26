@@ -50,13 +50,40 @@ async def up_button(interaction):
 async def upright_button(interaction):
   await move(interaction, 1, 1)
 
-@discohook.modal.new('Color Modal', fields = [discohook.TextInput('test', 'test')], custom_id = 'color_modal:v0.0')
-async def color_modal(interaction, test):
-  await interaction.response.send('submit color modal {}'.format(test))
+
+color_field = discohook.TextInput('Color', 'color', hint = 'A hex string like "#ffab12" or a number <= 16777215.', min_length = 1, max_length = 8, required = True)
+@discohook.modal.new('Color Modal', fields = [], custom_id = 'color_modal:v0.0')
+async def color_modal(interaction, color):
+  
+  # validate timestamp
+  try:
+    x, y, zoom, step, _color, timestamp = get_values(interaction)
+    assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
+  except: # index error = wrong screen, assert error = wrong timestamp
+    return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
+  
+  # validate input
+  try:
+    parsed_color = int(color) if color.isdecimal() else int(color.lstrip('#'), base = 16)
+  except:
+    return await interaction.response.send('Color `{}` is not a color!'.format(color), ephemeral = True)
+
+  # validate range
+  if not 0 <= parsed_color <= 256 ** 3 - 1:
+    return await interaction.response.send('Color `{}` is out of range!'.format(color), ephemeral = True)
+  
+  # all good, update view
+  data = x, y, zoom, step, parsed_color
+  await ExploreView(interaction).update(data)
 
 @discohook.button.new('Color: #000000', custom_id = 'color:v0.0', style = discohook.ButtonStyle.grey)
 async def color_button(interaction):
-  await interaction.response.send_modal(color_modal)
+  modal = discohook.Modal(
+    color_modal.title,
+    custom_id = '{}:{}'.format(color_modal.custom_id, get_values(interaction)[-1])    
+  )
+  modal.rows.append(color_field.to_dict())
+  await interaction.response.send_modal(modal)
 
 @discohook.button.new(emoji = '⬅️', custom_id = 'left:v0.0')
 async def left_button(interaction):
@@ -121,7 +148,6 @@ async def jump_modal(interaction, x, y):
   # validate timestamp
   try:
     _x, _y, zoom, step, color, timestamp = get_values(interaction)
-    print('this is custom id and timestamp', interaction.data['custom_id'], timestamp)
     assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
@@ -380,8 +406,14 @@ class ExploreView(discohook.View):
       custom_id = place_button.custom_id + ':',
       disabled = place_disabled
     )
+
+    dynamic_color_button = discohook.Button(
+      'Color: #{:06x}'.format(color),
+      custom_id = color_button.custom_id + ':',
+      style = color_button.style
+    )
     
-    self.add_buttons(dynamic_upleft_button, dynamic_up_button, dynamic_upright_button, color_button)
+    self.add_buttons(dynamic_upleft_button, dynamic_up_button, dynamic_upright_button, dynamic_color_button)
     self.add_buttons(dynamic_left_button, dynmaic_place_button, dynamic_right_button, jump_button)
     self.add_buttons(dynamic_downleft_button, dynamic_down_button, dynamic_downright_button, return_button)
     self.add_select(step_select)
