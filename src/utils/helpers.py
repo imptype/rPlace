@@ -3,6 +3,7 @@ Helper functions or code that is just odd.
 """
 
 import time
+import string
 import discohook
 
 def is_local(interaction):
@@ -16,18 +17,19 @@ def get_local_id(interaction):
   local_id = None
   if is_local(interaction): 
     local_id = interaction.guild_id or interaction.user_id # guild_id is None meaning it is in DMs
-  return convert_text(local_id) # saves storage
+    local_id = convert_text(local_id, string.digits)
+  return local_id # saves storage
 
 async def get_grid(interaction, force = False):
   local_id = get_local_id(interaction)
   app = interaction.client
-  helpers = app.helpers
   cache = app.pixels
 
   grid = cache.get(local_id)
-  if force or not grid or app.refreshed_at + helpers.REFRESH_DEBOUNCE < time.time():
+  if force or not grid or app.refreshed_at + app.constants.REFRESH_DEBOUNCE < time.time():
     grid = await interaction.client.db.get_grid(local_id)
     cache[local_id] = grid
+    print('cache', grid)
     app.refreshed_at = time.time()
   
   if force: # need to return local id too for updating db
@@ -43,7 +45,7 @@ async def get_username(interaction, user_id):
     resp = await interaction.client.http.fetch_user(str(user_id))
     if resp.status == 200:
       data = await resp.json()
-      user = discohook.User(data, interaction.client)
+      user = discohook.User(interaction.client, data)
       username = user.name if user.discriminator == 0 else '{}#{}'.format(user.name, user.discriminator)
     else:
       username = False # indicates Unknown user / fetch failed

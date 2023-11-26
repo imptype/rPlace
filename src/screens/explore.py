@@ -35,11 +35,8 @@ async def move(interaction, dx, dy):
   elif y > border:
     y = border
 
-  # new timestamp
-  timestamp = int(time.time() * 1000)
-
   # reuse zoom, step and color in new data
-  data = x, y, zoom, step, color, timestamp
+  data = x, y, zoom, step, color
   await ExploreView(interaction).update(data)
 
 @discohook.button.new(emoji = '↖️', custom_id = 'upleft:v0.0')
@@ -73,13 +70,15 @@ async def place_button(interaction):
   grid, local_id = await get_grid(interaction, True) # force refresh
 
   row = grid.get(y)
-  if row: # reuse this bool value for later
-    tile = row.get(str(x))
-  else:
+  x_key = str(x)
+  if row: # reuse this bool value for later, and wont be empty, will be None or have values in it
+    tile = row.get(x_key)
+  else:    
     row = {}
+    grid[y] = row
     tile = None
 
-  timestamp = int(time.time() * 1000)
+  timestamp = int(time.time()) # in seconds, specifically for the pixel
 
   # overwrite tile, just increment count [0 color, 1 timestamp, 2 count, 3 userid:None, 4guildidNone]
   if tile:
@@ -106,8 +105,9 @@ async def place_button(interaction):
   
   # update row/cache
   row[x_key] = tile
-
-  await interaction.response.send(f'clicked place at {x} {y} with color {color}!!!')
+  print('this is row and grid', row, grid)
+  data = x, y, zoom, step, color
+  await ExploreView(interaction).update(data)
 
 @discohook.button.new(emoji = '➡️', custom_id = 'right:v0.0')
 async def right_button(interaction):
@@ -147,7 +147,7 @@ async def step_select(interaction, values):
 
 zoom_options = [
   discohook.SelectOption('{0}x{0}'.format(i), str(i))
-  for i in [3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25]#, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51]
+  for i in [3, 7, 11, 15, 19, 25, 49, 75, 99, 128]#, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51]
 ]
 @discohook.select.text(zoom_options, placeholder = 'zoom_select', custom_id = 'zoom_select:v0.0')
 async def zoom_select(interaction, values):
@@ -170,34 +170,32 @@ class ExploreView(discohook.View):
   async def setup(self, data = None): # ainit
 
     if data:
-      pass # does not exist
-      x, y, zoom, step, color, timestamp = data
+      x, y, zoom, step, color = data
     else: # default, first move
       x = 0
       y = 0
       zoom = 11
       step = 1
       color = 0
-      timestamp = int(time.time() * 1000)
+    timestamp = int(time.time() * 1000) # create new timestamp
       
     app = self.interaction.client
     grid = await get_grid(self.interaction)
-
     pixel = grid.get(y, {}).get(str(x))
 
     # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
     if pixel:
-      text = '🎨 #{}'.format(pixel[0])
+      text = '🎨 #{:06x}'.format(pixel[0])
 
       if self.interaction.guild_id: # not in dms
 
-        user_id = pixel[3]
+        user_id = revert_text(pixel[3], string.digits)
         tasks = [get_username(self.interaction, user_id)]
 
         is_local_check = is_local(self.interaction)
         if not is_local_check: # not local canvas command
-          if len(pixel) == 4: # from user DMs, 0 1 2 3, guild id not included
-            guild_id = pixel[4]
+          if len(pixel) == 5: # from user DMs, 0 1 2 3, 4 guild id not included
+            guild_id = revert_text(pixel[4], string.digits)
             tasks.append(get_guild_name(self.interaction, guild_id))
         
         results = await asyncio.gather(*tasks) # point is to save time by doing both requests at the same time
@@ -257,11 +255,20 @@ class ExploreView(discohook.View):
     for i in range(zoom):
       y_key = starty + i
       if y_key in grid:
-        pass # doesnt exist yet, no idea
+        now = time.time()
+        a[i] = np.vstack(tuple((
+          (
+            np.array(((grid[y_key][str(x_key)][0] >> 16) & 255, (grid[y_key][str(x_key)][0] >> 8) & 255, grid[y_key][str(x_key)][0] & 255))
+            if str(x_key) in grid[y_key]
+            else np.full((3), 255)
+          )
+          for x_key in range(zoom)
+        )))
+        print('took', time.time() - now)
       else: # new grids
         a[i] = np.full((zoom, 3), 255)
 
-    bim = Image.fromarray(a)
+    bim = Image.fromarray(a[::-1]) # draw upside down
 
     # draw cursor if not cached
     n = 8 # cursor is 8px in size

@@ -121,8 +121,8 @@ def run():
         '',
         'Test: {}'.format(app.test),
         '',
-        'Pixels Cache: {}'.format('\n'.join([
-          '{}: {}'.format(local_id, len(grid))
+        'Pixels Cache: \n  {}'.format('  \n'.join([
+          '{}: {}'.format(local_id, grid) # len so readable
           for local_id, grid in app.pixels.items()
         ])),
         'Stats Cache: {}'.format(0),
