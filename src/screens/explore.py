@@ -50,14 +50,13 @@ async def up_button(interaction):
 async def upright_button(interaction):
   await move(interaction, 1, 1)
 
-
 color_field = discohook.TextInput('Color', 'color', hint = 'A hex string like "#ffab12" or a number <= 16777215.', min_length = 1, max_length = 8, required = True)
 @discohook.modal.new('Color Modal', fields = [], custom_id = 'color_modal:v0.0')
 async def color_modal(interaction, color):
   
   # validate timestamp
   try:
-    x, y, zoom, step, _color, timestamp = get_values(interaction)
+    x, y, zoom, step, old_color, timestamp = get_values(interaction)
     assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
@@ -71,6 +70,10 @@ async def color_modal(interaction, color):
   # validate range
   if not 0 <= parsed_color <= 256 ** 3 - 1:
     return await interaction.response.send('Color `{}` is out of range!'.format(color), ephemeral = True)
+
+  # validate new color
+  if parsed_color == old_color:
+    return await interaction.response.send('Color `{}` is already selected!'.format(color), ephemeral = True)
   
   # all good, update view
   data = x, y, zoom, step, parsed_color
@@ -104,13 +107,15 @@ async def place_button(interaction):
     grid[y] = row
     tile = None
 
-  timestamp = int(time.time()) # in seconds, specifically for the pixel
-
   # overwrite tile, just increment count [0 color, 1 timestamp, 2 count, 3 userid:None, 4guildidNone]
   if tile:
+    if tile[0] == color: # validate tile is not already the same color, rare case if place button is outdated
+      return await interaction.response.send('The tile `({}, {})` is already the color `#{:06x}`!'.format(x, y, color), ephemeral = True)
     count = tile[2] + 1
   else:
     count = 0
+
+  timestamp = int(time.time()) # in seconds, specifically for the pixel
   
   if is_local(interaction): # /local-canvas
     if interaction.guild_id: # /local-canvas in guild
@@ -147,7 +152,7 @@ async def jump_modal(interaction, x, y):
 
   # validate timestamp
   try:
-    _x, _y, zoom, step, color, timestamp = get_values(interaction)
+    old_x, old_y, zoom, step, color, timestamp = get_values(interaction)
     assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
@@ -166,6 +171,10 @@ async def jump_modal(interaction, x, y):
   elif not 0 <= y <= BORDER:
     return await interaction.response.send('Y coordinate `{}` is out of range!'.format(y), ephemeral = True)
   
+  # validate new x y coords
+  if x == old_x and y == old_y:
+    return await interaction.response.send('You are already at tile `({}, {})`!'.format(x, y), ephemeral = True)
+
   # all good, update view
   data = x, y, zoom, step, color
   await ExploreView(interaction).update(data)
@@ -251,11 +260,7 @@ class ExploreView(discohook.View):
         tasks = [get_username(self.interaction, user_id)]
 
         is_local_check = is_local(self.interaction)
-        if is_local_check: # local canvas command
-          if len(pixel) == 4: # local canvas within a guild            
-            place_disabled = place_disabled and self.interaction.author.id == user_id
-        else: # not local canvas command
-          place_disabled = place_disabled and self.interaction.author.id == user_id
+        if not is_local_check: # not local canvas command
           if len(pixel) == 5: # from user DMs, 0 1 2 3, 4 guild id not included
             guild_id = revert_text(pixel[4], string.digits)
             tasks.append(get_guild_name(self.interaction, guild_id))
