@@ -1,12 +1,13 @@
 import io
 import time
+import string
 import asyncio
 import discohook
 import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE
-from ..utils.helpers import get_grid, is_local, get_username, get_guild_name
+from ..utils.helpers import get_grid, is_local, get_username, get_guild_name, convert_text, revert_text
 
 def get_values(interaction):
   return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
@@ -69,26 +70,42 @@ async def left_button(interaction):
 async def place_button(interaction):
   x, y, zoom, step, color, _timestamp = get_values(interaction)
   
-  grid = await get_grid(interaction, True) # force refresh
+  grid, local_id = await get_grid(interaction, True) # force refresh
 
-  tile = grid.get(y, {}).get(str(x))
+  row = grid.get(y)
+  if row: # reuse this bool value for later
+    tile = row.get(str(x))
+  else:
+    row = {}
+    tile = None
 
   timestamp = int(time.time() * 1000)
 
-  # make tile if doesn't exist [0 color, 1 timestamp, 2 count, 3 userid:None, 4guildidNone]
-  if not tile:
-    if is_local(interaction): # /local-canvas
-      if interaction.guild_id: # /local-canvas in guild
-        tile = [color, timestamp, 0, interaction.author.id]
-      else: # /local-canvas in DMs
-        tile = [color, timestamp, 0]
-    else: # /canvas
-      if interaction.guild_id: # /canvas in guild
-        tile = [color, timestamp, 0, interaction.author.id, interaction.guild_id]
-      else: # /canvas in DMs
-        tile = [color, timestamp, 0, interaction.author.id]
+  # overwrite tile, just increment count [0 color, 1 timestamp, 2 count, 3 userid:None, 4guildidNone]
+  if tile:
+    count = tile[2] + 1
+  else:
+    count = 0
+  
+  if is_local(interaction): # /local-canvas
+    if interaction.guild_id: # /local-canvas in guild
+      tile = [color, timestamp, count, convert_text(interaction.author.id, string.digits)]
+    else: # /local-canvas in DMs
+      tile = [color, timestamp, count]
+  else: # /canvas
+    if interaction.guild_id: # /canvas in guild
+      tile = [color, timestamp, count, convert_text(interaction.author.id, string.digits), convert_text(interaction.guild_id, string.digits)]
+    else: # /canvas in DMs
+      tile = [color, timestamp, count, convert_text(interaction.author.id, string.digits)]
 
-  print('this is tile', tile)
+  # update database with new tile or create row if it does not exist
+  if row:
+    await interaction.client.db.update_tile(local_id, y, x, tile)
+  else:
+    await interaction.client.db.create_row(local_id, y, x, tile)
+  
+  # update row/cache
+  row[x_key] = tile
 
   await interaction.response.send(f'clicked place at {x} {y} with color {color}!!!')
 

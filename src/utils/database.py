@@ -22,6 +22,25 @@ class Database(Deta):
       grid[k] = record
     return grid
 
+  async def create_row(self, local_id, y, x, tile):
+    pass
+
+  async def update_tile(self, local_id, y, x, tile): # make sure row exists, db fetch prior
+    updater = Updater()
+    y_key = str(y).zfill(3) # max 999
+    key = '{} {}'.format(y_key, local_id)
+    updater.equals('key')
+    updater.equals('local_id', local_id)
+    pass
+  
+  async def update_tile(self, local_id, y, tile):
+    record = Record(
+      str(y).zfill(3),
+      **row # x are strs with array values
+    )
+
+    print('this is record', record.payload)
+
 """   self.test = self.base('test')#self.base('global') # or canvas
     self.size = 25
 

@@ -16,7 +16,7 @@ def get_local_id(interaction):
   local_id = None
   if is_local(interaction): 
     local_id = interaction.guild_id or interaction.user_id # guild_id is None meaning it is in DMs
-  return local_id
+  return convert_text(local_id) # saves storage
 
 async def get_grid(interaction, force = False):
   local_id = get_local_id(interaction)
@@ -29,6 +29,9 @@ async def get_grid(interaction, force = False):
     grid = await interaction.client.db.get_grid(local_id)
     cache[local_id] = grid
     app.refreshed_at = time.time()
+  
+  if force: # need to return local id too for updating db
+    return grid, local_id
   
   return grid
 
