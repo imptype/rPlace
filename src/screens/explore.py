@@ -205,14 +205,26 @@ async def downright_button(interaction):
 async def return_button(interaction):
   await start.StartView(interaction).update()
 
-step_options = [1, 2, 3, 4, 5, 10, 20, 50, 100, 250]
-@discohook.select.text([discohook.SelectOption('', '')], placeholder = 'Select a step size...', custom_id = 'step_select:v0.0')
+step_options = [
+  discohook.SelectOption(str(i), str(i)) 
+  for i in (1, 2, 3, 4, 5, 10, 20, 50, 100, 250)
+]
+@discohook.select.text(step_options, custom_id = 'step_select:v0.0')
 async def step_select(interaction, values):
-  await interaction.response.send('clicked step select {}'.format(values))
+  x, y, zoom, old_step, color, _timestamp = get_values(interaction)
+  step = int(values[0])
+  
+  # validate new step
+  if step == old_step:
+    return await interaction.response.send('Step size `{}` is already selected!'.format(step), ephemeral = True)
+  
+  # update view
+  data = x, y, zoom, step, color
+  await ExploreView(interaction).update(data)
 
 zoom_options = [
   discohook.SelectOption('{0}x{0}'.format(i), str(i))
-  for i in [3, 7, 11, 15, 19, 25, 49, 75, 99, 128]#, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51]
+  for i in [3, 7, 11, 15, 19, 25, 49, 75, 99, 128]
 ]
 @discohook.select.text(zoom_options, placeholder = 'zoom_select', custom_id = 'zoom_select:v0.0')
 async def zoom_select(interaction, values):
@@ -420,10 +432,7 @@ class ExploreView(discohook.View):
       placeholder = 'Step Size: {}'.format(step),
       custom_id = step_select.custom_id + ':'      
     )
-    dynamic_step_select.options = [
-      discohook.SelectOption(str(i), str(i))
-      for i in step_options
-    ]
+    dynamic_step_select.options = step_options
       
     self.add_buttons(dynamic_upleft_button, dynamic_up_button, dynamic_upright_button, dynamic_color_button)
     self.add_buttons(dynamic_left_button, dynmaic_place_button, dynamic_right_button, jump_button)
