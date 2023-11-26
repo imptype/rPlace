@@ -99,7 +99,7 @@ def revert_text(text, chars):
       value //= base
   return result
 
-def draw_map(grid, size, starty = 0, startx = 0): # for sections, starty and startx is given
+def draw_map(grid, size, startx = 0, starty = 0): # for sections, starty and startx is given
   a = np.empty((size, size, 3), np.uint8)
   for i in range(size):
     y_key = starty + i
