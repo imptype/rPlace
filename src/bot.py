@@ -46,8 +46,10 @@ def run():
   async def on_error(interaction, error):
     if isinstance(error, discohook.errors.CheckFailure):
       return print('Ignoring check failure', str(interaction.author), interaction.data['custom_id'].split(':')[0])
-    if isinstance(error, NotImplementedError):
+    elif isinstance(error, NotImplementedError):
       return print('Ignoring component not found', str(interaction.author), interaction.data)
+    elif isinstance(error, helpers.MaintenanceError):
+      return print('Ignoring maintenance failure', error.message)
     if interaction.responded:
       await interaction.response.followup('Sorry, an error has occured (after responding).')
     else:
@@ -93,7 +95,7 @@ def run():
 
   # Attach cache
   app.pixels = {} # local_id : grid, this is always updated on pixel placement, not for movement debounce of 1 min though
-  app.users = {} # userid : name|None
+  app.users = {} # userid : name, avatar_url|None # not hash because supported by lib
   app.guilds = {} # guildid : name, icon hash|None
 
   # Set bot started at timestamp
@@ -115,13 +117,19 @@ def run():
   app.active_components[jump_modal.custom_id] = jump_modal
 
   # Add commands
-  app.add_commands(
+  commands = (
     ping_command,
     help_command,
     canvas_command,
     local_canvas_command
   )
-  if app.test:
+  for command in commands:
+    command.checks.append(helpers.maintenance_check)
+    command.checks.append(helpers.before_invoke_check)
+  app.add_commands(*commands)
+  
+  # Add test command
+  if app.test: # does not have maintenance lock, and locked to server anyway
     app.add_commands(test_command)
 
   # Attach / route for debugging

@@ -123,3 +123,23 @@ def draw_map(grid, size, startx = 0, starty = 0): # for sections, starty and sta
 
 def to_chunks(lst, n):
   return [lst[i:i + n] for i in range(0, len(lst), n)]
+
+class MaintenanceError(Exception):
+  def __init__(self, interaction):
+    self.message = 'GuildID: {} | UserID: {} | Data: {}'.format(
+      interaction.guild_id,
+      interaction.author.id,
+      interaction.data
+    )
+
+async def maintenance_check(interaction):
+  if interaction.client.maintenance:
+    await interaction.response.send('The bot is currently in maintenace mode with the reason: `{}`. Try again later (after a few hours or a day) and you can check the progress by visiting the bot\'s support server.'.format(interaction.client.maintenance), ephemeral = True)
+    raise MaintenanceError(interaction)
+  return True
+
+async def before_invoke_check(interaction):
+  cache = interaction.client.users
+  user = interaction.author
+  cache[int(user.id)] = get_username(user), user.avatar.url
+  return True  
