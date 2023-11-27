@@ -19,7 +19,7 @@ def is_local(interaction):
 def get_local_id(interaction):
   local_id = None
   if is_local(interaction): 
-    local_id = interaction.guild_id or interaction.user_id # guild_id is None meaning it is in DMs
+    local_id = interaction.guild_id or interaction.author.id # guild_id is None meaning it is in DMs
     local_id = convert_text(local_id, string.digits)
   return local_id # saves storage
 
