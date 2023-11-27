@@ -90,13 +90,13 @@ def run():
       app.texts[lang] = json.loads(f.read())
 
   # Attach configs
-  app.refreshed_at = 0
-  app.cursor = None
+  app.cursor = None # stores pillow cursor image to be reused
 
   # Attach cache
   app.pixels = {} # local_id : grid, this is always updated on pixel placement, not for movement debounce of 1 min though
   app.users = {} # userid : name, avatar_url|None # not hash because supported by lib
   app.guilds = {} # guildid : name, icon hash|None
+  app.refreshes = {} # local_id : int(timestamp) # indicates whether canvas was refreshed or not
 
   # Set bot started at timestamp
   app.started_at = datetime.datetime.utcnow()

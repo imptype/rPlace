@@ -9,19 +9,28 @@ from ..utils.helpers import get_grid, draw_map
 async def explore_button(interaction):
   await ExploreView(interaction).update()
 
-@discohook.button.new(emoji = '🏆', custom_id = 'top:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.green)
+@discohook.button.new(emoji = '🏅', custom_id = 'top:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.green)
 async def top_button(interaction):
   await interaction.response.send('clicked top button')
 
 @discohook.button.new(emoji = '🔄', custom_id = 'refresh:v{}'.format(BOT_VERSION))
 async def refresh_button(interaction):
-  await interaction.response.send('clicked refresh button')
+
+  # parse last refresh timestamp on canvas
+  refresh_at = int(interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
+  
+  grid, new_refresh_at = await get_grid(interaction, with_refresh = True)
+
+  if refresh_at == new_refresh_at: # didnt do an update
+    return await interaction.response.send('Already up to date.', ephemeral = True)
+  
+  refresh_data = grid, new_refresh_at
+  await StartView(interaction).update(refresh_data)
 
 class StartView(discohook.View):
   def __init__(self, interaction = None):
     super().__init__()
     if interaction:
-
       self.interaction = interaction
       self.embed = discohook.Embed(
         'Welcome to r/Place!',
@@ -32,11 +41,15 @@ class StartView(discohook.View):
         ]),
         color = COLOR_BLURPLE
       )
-    self.add_buttons(explore_button, refresh_button)
+    else: # persistent
+      self.add_buttons(explore_button, top_button, refresh_button)
 
-  async def setup(self): # ainit
+  async def setup(self, refresh_data = None): # ainit
     
-    grid = await get_grid(self.interaction)
+    if refresh_data:
+      grid, refresh_at = refresh_data
+    else: # not from refresh_button
+      grid, refresh_at = await get_grid(self.interaction, with_refresh = True)
 
     def blocking():
       im = draw_map(grid, CANVAS_SIZE)
@@ -48,11 +61,19 @@ class StartView(discohook.View):
     buffer = await asyncio.to_thread(blocking)
 
     self.embed.set_image(discohook.File('map.png', content = buffer.getvalue()))
+    
+    # stuff custom id of refreshed at in this button
+    dyanmic_explore_button = discohook.Button(
+      explore_button.label,
+      emoji = explore_button.emoji,
+      custom_id = '{}:{}'.format(explore_button.custom_id, refresh_at)
+    )
+    self.add_buttons(dyanmic_explore_button, top_button, refresh_button)
   
   async def send(self):
     await self.setup()
     await self.interaction.response.send(embed = self.embed, view = self)
 
-  async def update(self):
-    await self.setup()
+  async def update(self, refresh_data = None):
+    await self.setup(refresh_data)
     await self.interaction.response.update_message(embed = self.embed, view = self)
