@@ -39,6 +39,9 @@ async def get_grid(interaction, force = False):
   
   return grid
 
+def get_username(user):
+  return user.name if user.discriminator == 0 else '{}#{}'.format(user.name, user.discriminator)
+
 async def get_user_data(interaction, user_id):
   cache = interaction.client.users
   user_key = int(user_id)
@@ -48,7 +51,7 @@ async def get_user_data(interaction, user_id):
     if resp.status == 200:
       data = await resp.json()
       user = discohook.User(interaction.client, data)
-      username = user.name if user.discriminator == 0 else '{}#{}'.format(user.name, user.discriminator)
+      username = get_username(user)
       avatar_url = user.avatar.url
       user_data = username, avatar_url      
     else:
@@ -117,3 +120,6 @@ def draw_map(grid, size, startx = 0, starty = 0): # for sections, starty and sta
     else: # new grids
       a[i] = np.full((size, 3), 255)
   return Image.fromarray(a[::-1]) # draw upside down
+
+def to_chunks(lst, n):
+  return [lst[i:i + n] for i in range(0, len(lst), n)]

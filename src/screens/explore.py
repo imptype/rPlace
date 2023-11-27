@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION
-from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map
+from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username
 
 BORDER = CANVAS_SIZE - 1
 
@@ -117,7 +117,8 @@ async def place_button(interaction):
 
   timestamp = int(time.time()) # in seconds, specifically for the pixel
   
-  if is_local(interaction): # /local-canvas
+  is_local_check = is_local(interaction)
+  if is_local_check: # /local-canvas
     if interaction.guild_id: # /local-canvas in guild
       tile = [color, timestamp, count, convert_text(interaction.author.id, string.digits)]
     else: # /local-canvas in DMs
@@ -138,6 +139,23 @@ async def place_button(interaction):
   row[x_key] = tile
   data = x, y, zoom, step, color
   await ExploreView(interaction).update(data)
+
+  # record log
+  guild_name = None
+  if interaction.guild_id:
+    guild_data = await get_guild_data(interaction, interaction.guild_id)
+    guild_name = guild_data[0] if guild_data else False
+  
+  await interaction.client.db.record_log(
+    get_username(interaction.author),
+    interaction.author.id,
+    x,
+    y,
+    color,
+    guild_name,
+    interaction.guild_id,
+    is_local_check
+  )
 
 @discohook.button.new(emoji = '➡️', custom_id = 'right:v{}'.format(BOT_VERSION))
 async def right_button(interaction):

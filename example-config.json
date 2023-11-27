@@ -6,5 +6,7 @@
   "TOKEN" : "",
   "LOG" : "",
   "DB" : "",
-  "MAIN" : ""
+  "MAIN" : "",
+  "GLOBAL" : "",
+  "LOCAL" : ""
 }

@@ -11,7 +11,7 @@ if os.path.isfile(path): # <-- file won't exist in production
   os.environ['test'] = '1'
 
 # Validate keys
-keys = ('START', 'PASS', 'ID', 'KEY', 'TOKEN', 'LOG', 'DB', 'MAIN')
+keys = ('START', 'PASS', 'ID', 'KEY', 'TOKEN', 'LOG', 'DB', 'MAIN', 'GLOBAL', 'LOCAL')
 assert all(key in os.environ for key in keys), 'fail key'
 
 # Validate pass

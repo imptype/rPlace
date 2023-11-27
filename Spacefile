@@ -22,3 +22,11 @@ micros:
       - name: LOG
       - name: DB
       - name: MAIN
+      - name: GLOBAL
+      - name: LOCAL
+    actions:
+      - id: 'check'
+        name: 'Check'
+        description: 'Checks for logs'
+        trigger: 'schedule'
+        default_interval: '* * * * *'

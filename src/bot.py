@@ -5,7 +5,7 @@ import datetime
 import traceback
 import contextlib
 import discohook
-from starlette.responses import PlainTextResponse
+from starlette.responses import PlainTextResponse, Response
 from .utils import constants, database, helpers
 from .cogs.ping import ping_command
 from .cogs.help import help_command
@@ -47,7 +47,7 @@ def run():
     if isinstance(error, discohook.errors.CheckFailure):
       return print('Ignoring check failure', str(interaction.author), interaction.data['custom_id'].split(':')[0])
     if isinstance(error, NotImplementedError):
-      return print('Ignoring component not found', str(interaction.author), interaction.data['custom_id'].split(':')[0])
+      return print('Ignoring component not found', str(interaction.author), interaction.data)
     if interaction.responded:
       await interaction.response.followup('Sorry, an error has occured (after responding).')
     else:
@@ -70,6 +70,10 @@ def run():
     if not interaction.from_originator:
       await interaction.response.send('This is not your interaction, please run your own instance of the command.', ephemeral = True)
     return ':'.join([name, version])
+
+  # Attach other webhooks
+  app.global_webhook = discohook.PartialWebhook.from_url(app, os.getenv('GLOBAL'))
+  app.local_webhook = discohook.PartialWebhook.from_url(app, os.getenv('LOCAL'))
 
   # Attach helpers and constants, might be helpful
   app.constants = constants
@@ -138,6 +142,15 @@ def run():
         'Errors: {}'.format(json.dumps(app.errors, indent = 2)),
       ])
     )
+
+  # Actions handler
+  @app.route('/__space/v0/actions', methods = ['POST'])
+  async def actions(request):
+    data = await request.json()
+    event = data['event']
+    if event['id'] == 'check':
+      await app.db.refresh_logs()
+    return Response()
 
   # Return app object
   return app
