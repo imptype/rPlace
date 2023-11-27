@@ -39,7 +39,11 @@ class Database(Deta):
     await self.pixels.insert(record)
 
   async def update_tile(self, local_id, y, x, tile): # make sure row exists, db fetch prior
-    key = get_key(local_id, y)
+    key = get_key(local_id, y) # this is broken for local dms unsure why, bad chars in keys?
+    q = Query()
+    q.equals('key', key)
+    results = await self.pixels.fetch([q])
+    print('fetch results', results)
     updater = Updater()
     updater.set(str(x), tile)
     await self.pixels.update(key, updater)

@@ -39,20 +39,22 @@ async def get_grid(interaction, force = False):
   
   return grid
 
-async def get_username(interaction, user_id):
+async def get_user_data(interaction, user_id):
   cache = interaction.client.users
   user_key = int(user_id)
-  username = cache.get(user_key)
-  if username is None:
+  user_data = cache.get(user_key)
+  if user_data is None:
     resp = await interaction.client.http.fetch_user(str(user_id))
     if resp.status == 200:
       data = await resp.json()
       user = discohook.User(interaction.client, data)
       username = user.name if user.discriminator == 0 else '{}#{}'.format(user.name, user.discriminator)
+      avatar_url = user.avatar.url
+      user_data = username, avatar_url      
     else:
-      username = False # indicates Unknown user / fetch failed
-    cache[user_key] = username
-  return username
+      user_data = False # indicates Unknown user / fetch failed
+    cache[user_key] = user_data
+  return user_data
 
 async def get_guild_data(interaction, guild_id):
   cache = interaction.client.guilds

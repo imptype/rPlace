@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION
-from ..utils.helpers import get_grid, is_local, get_username, get_guild_data, convert_text, revert_text, draw_map
+from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map
 
 BORDER = CANVAS_SIZE - 1
 
@@ -107,7 +107,7 @@ async def place_button(interaction):
     grid[y] = row
     tile = None
 
-  # overwrite tile, just increment count [0 color, 1 timestamp, 2 count, 3 userid:None, 4guildidNone]
+  # overwrite tile, just increment count [0 color, 1 timestamp, 2 count, 3 userid:None, 4 guildidNone]
   if tile:
     if tile[0] == color: # validate tile is not already the same color, rare case if place button is outdated
       return await interaction.response.send('The tile `({}, {})` is already the color `#{:06x}`!'.format(x, y, color), ephemeral = True)
@@ -270,7 +270,7 @@ class ExploreView(discohook.View):
     pixel = grid.get(y, {}).get(str(x))
 
     # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
-    guild_icon = None
+    thumbnail_url = None
     if pixel:
       place_disabled = color == pixel[0] # selecting same color
 
@@ -279,7 +279,7 @@ class ExploreView(discohook.View):
       if self.interaction.guild_id: # not in dms
 
         user_id = revert_text(pixel[3], string.digits)
-        tasks = [get_username(self.interaction, user_id)]
+        tasks = [get_user_data(self.interaction, user_id)]
 
         is_local_check = is_local(self.interaction)
         if not is_local_check: # not local canvas command
@@ -289,20 +289,24 @@ class ExploreView(discohook.View):
         
         results = await asyncio.gather(*tasks) # point is to save time by doing both requests at the same time
         
-        username = results[0]
+        user_data = results[0] # contains username, avatar_url else None
         text += '\n🧍 {} | <@{}>'.format(
-          username or '*Unknown User*',
-          user_id 
+          user_data[0] if user_data else '*Unknown User*',
+          user_id
         )
 
-        if not is_local_check: # this is global canvas, include guild as well, no matter if DMs
+        if is_local_check: # if local guild canvas, show user avatar url as thumbnail
+          if len(pixel) == 4: # local canvas in guild
+            if user_data:
+              thumbnail_url = user_data[1]
+        else: # this is global canvas, include guild as well, no matter if DMs
           if len(pixel) == 4: # from user DMs, 0 1 2 3, guild id not included
             guild_text = '*Bot\'s DMs*'
           else:
             guild_data = results[1] # None or Name, Hash
             if guild_data:
               guild_name, icon_hash = guild_data
-              guild_icon = 'https://cdn.discordapp.com/icons/{}/{}.png'.format(guild_id, icon_hash)
+              thumbnail_url = 'https://cdn.discordapp.com/icons/{}/{}.png'.format(guild_id, icon_hash)
             else:
               guild_name = '*Unknown Server*'
             url = 'https://discord.com/servers/{}'.format(guild_id)
@@ -323,8 +327,8 @@ class ExploreView(discohook.View):
       description = text,
       color = COLOR_BLURPLE
     )
-    if guild_icon:
-      self.embed.set_thumbnail(guild_icon)
+    if thumbnail_url:
+      self.embed.set_thumbnail(thumbnail_url)
 
     # calculate pointer cursor
     radius = int(zoom/2)
