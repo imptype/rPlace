@@ -1,5 +1,6 @@
-import time
+import string
 from deta import Deta, Query, Record, Updater
+from ..utils.helpers import convert_text
 
 def get_key(local_id, y):
   y_key = str(y).zfill(3)
@@ -17,6 +18,8 @@ class Database(Deta):
 
   async def get_grid(self, local_id):
     query = Query()
+    if local_id:
+      local_id = convert_text(local_id, string.digits) # saves storage, ignore None
     query.equals('local_id', local_id)
     
     grid = {}
@@ -31,6 +34,8 @@ class Database(Deta):
   async def create_row(self, local_id, y, x, tile):
     key = get_key(local_id, y)
     kwargs = {str(x) : tile}
+    if local_id:
+      local_id = convert_text(local_id, string.digits) # saves storage
     record = Record(
       key,
       local_id = local_id,
@@ -40,10 +45,6 @@ class Database(Deta):
 
   async def update_tile(self, local_id, y, x, tile): # make sure row exists, db fetch prior
     key = get_key(local_id, y) # this is broken for local dms unsure why, bad chars in keys?
-    q = Query()
-    q.equals('key', key)
-    results = await self.pixels.fetch([q])
-    print('fetch results', results)
     updater = Updater()
     updater.set(str(x), tile)
     await self.pixels.update(key, updater)
