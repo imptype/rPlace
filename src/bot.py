@@ -46,6 +46,8 @@ def run():
   async def on_error(interaction, error):
     if isinstance(error, discohook.errors.CheckFailure):
       return print('Ignoring check failure', str(interaction.author), interaction.data['custom_id'].split(':')[0])
+    if isinstance(error, NotImplementedError):
+      return print('Ignoring component not found', str(interaction.author), interaction.data['custom_id'].split(':')[0])
     if interaction.responded:
       await interaction.response.followup('Sorry, an error has occured (after responding).')
     else:
@@ -59,9 +61,15 @@ def run():
   # Set custom ID parser
   @app.custom_id_parser()
   async def custom_id_parser(interaction, custom_id):
-    if interaction.author.id != '364487161250316289':
-      return await interaction.response.send('The bot is under maintenance, you may report to the support server for details!')
-    return ':'.join(custom_id.split(':')[:2]) # name:v0.0 returned
+    #if interaction.author.id != '364487161250316289':
+    #  return await interaction.response.send('The bot is under maintenance, you may report to the support server for details!')
+    name, version = custom_id.split(':')[:2]
+    if version.removeprefix('v') != app.version:
+      await interaction.response.send('Message is outdated, please run the command again. (`{}` vs `v{}`)'.format(version, app.version))
+      return
+    if not interaction.from_originator:
+      await interaction.response.send('This is not your interaction, please run your own instance of the command.', ephemeral = True)
+    return ':'.join([name, version])
 
   # Attach helpers and constants, might be helpful
   app.constants = constants
@@ -88,7 +96,7 @@ def run():
   app.started_at = datetime.datetime.utcnow()
 
   # Set bot version
-  app.version = '2.2'
+  app.version = constants.BOT_VERSION
 
   # Set if bot is test or not
   app.test = bool(os.getenv('test'))

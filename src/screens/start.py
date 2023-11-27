@@ -2,18 +2,18 @@ import io
 import asyncio
 import discohook
 from ..screens.explore import ExploreView
-from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE
+from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, BOT_VERSION
 from ..utils.helpers import get_grid, draw_map
 
-@discohook.button.new('Explore', emoji = '🔍', custom_id = 'explore:v0.0')
+@discohook.button.new('Explore', emoji = '🔍', custom_id = 'explore:v{}'.format(BOT_VERSION))
 async def explore_button(interaction):
   await ExploreView(interaction).update()
 
-@discohook.button.new(emoji = '🏆', custom_id = 'top:v0.0', style = discohook.ButtonStyle.green)
+@discohook.button.new(emoji = '🏆', custom_id = 'top:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.green)
 async def top_button(interaction):
   await interaction.response.send('clicked top button')
 
-@discohook.button.new(emoji = '🔄', custom_id = 'refresh:v0.0')
+@discohook.button.new(emoji = '🔄', custom_id = 'refresh:v{}'.format(BOT_VERSION))
 async def refresh_button(interaction):
   await interaction.response.send('clicked refresh button')
 
@@ -32,7 +32,7 @@ class StartView(discohook.View):
         ]),
         color = COLOR_BLURPLE
       )
-    self.add_buttons(explore_button, top_button, refresh_button)
+    self.add_buttons(explore_button, refresh_button)
 
   async def setup(self): # ainit
     

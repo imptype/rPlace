@@ -6,7 +6,7 @@ import discohook
 import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
-from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE
+from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION
 from ..utils.helpers import get_grid, is_local, get_username, get_guild_data, convert_text, revert_text, draw_map
 
 BORDER = CANVAS_SIZE - 1
@@ -38,20 +38,20 @@ async def move(interaction, dx, dy):
   data = x, y, zoom, step, color
   await ExploreView(interaction).update(data)
 
-@discohook.button.new(emoji = '↖️', custom_id = 'upleft:v0.0')
+@discohook.button.new(emoji = '↖️', custom_id = 'upleft:v{}'.format(BOT_VERSION))
 async def upleft_button(interaction):
   await move(interaction, -1, 1)
 
-@discohook.button.new(emoji = '⬆️', custom_id = 'up:v0.0')
+@discohook.button.new(emoji = '⬆️', custom_id = 'up:v{}'.format(BOT_VERSION))
 async def up_button(interaction):
   await move(interaction, 0, 1)
 
-@discohook.button.new(emoji = '↗️', custom_id = 'upright:v0.0')
+@discohook.button.new(emoji = '↗️', custom_id = 'upright:v{}'.format(BOT_VERSION))
 async def upright_button(interaction):
   await move(interaction, 1, 1)
 
 color_field = discohook.TextInput('Color', 'color', hint = 'A hex string like "#ffab12" or a number <= 16777215.', min_length = 1, max_length = 8, required = True)
-@discohook.modal.new('Color Modal', fields = [], custom_id = 'color_modal:v0.0')
+@discohook.modal.new('Color Modal', fields = [], custom_id = 'color_modal:v{}'.format(BOT_VERSION))
 async def color_modal(interaction, color):
   
   # validate timestamp
@@ -79,7 +79,7 @@ async def color_modal(interaction, color):
   data = x, y, zoom, step, parsed_color
   await ExploreView(interaction).update(data)
 
-@discohook.button.new('Color: #000000', custom_id = 'color:v0.0', style = discohook.ButtonStyle.grey)
+@discohook.button.new('Color: #000000', custom_id = 'color:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.grey)
 async def color_button(interaction):
   modal = discohook.Modal(
     color_modal.title,
@@ -88,11 +88,11 @@ async def color_button(interaction):
   modal.rows.append(color_field.to_dict())
   await interaction.response.send_modal(modal)
 
-@discohook.button.new(emoji = '⬅️', custom_id = 'left:v0.0')
+@discohook.button.new(emoji = '⬅️', custom_id = 'left:v{}'.format(BOT_VERSION))
 async def left_button(interaction):
   await move(interaction, -1, 0)
 
-@discohook.button.new(emoji = '🆗', custom_id = 'place:v0.0')
+@discohook.button.new(emoji = '🆗', custom_id = 'place:v{}'.format(BOT_VERSION))
 async def place_button(interaction):
   x, y, zoom, step, color, _timestamp = get_values(interaction)
   
@@ -139,7 +139,7 @@ async def place_button(interaction):
   data = x, y, zoom, step, color
   await ExploreView(interaction).update(data)
 
-@discohook.button.new(emoji = '➡️', custom_id = 'right:v0.0')
+@discohook.button.new(emoji = '➡️', custom_id = 'right:v{}'.format(BOT_VERSION))
 async def right_button(interaction):
   await move(interaction, 1, 0)
 
@@ -147,7 +147,7 @@ jump_fields = [
   discohook.TextInput('X', 'x', hint = 'A number in the range of 0-{}'.format(BORDER), min_length = 1, max_length = 3, required = True),
   discohook.TextInput('Y', 'y', hint = 'A number in the range of 0-{}'.format(BORDER), min_length = 1, max_length = 3, required = True)
 ]
-@discohook.modal.new('Jump Modal', fields = [], custom_id = 'jump_modal:v0.0')
+@discohook.modal.new('Jump Modal', fields = [], custom_id = 'jump_modal:v{}'.format(BOT_VERSION))
 async def jump_modal(interaction, x, y):
 
   # validate timestamp
@@ -179,7 +179,7 @@ async def jump_modal(interaction, x, y):
   data = x, y, zoom, step, color
   await ExploreView(interaction).update(data)
 
-@discohook.button.new('Jump to (X, Y)', style = discohook.ButtonStyle.grey, custom_id = 'jump:v0.0')
+@discohook.button.new('Jump to (X, Y)', style = discohook.ButtonStyle.grey, custom_id = 'jump:v{}'.format(BOT_VERSION))
 async def jump_button(interaction):
   modal = discohook.Modal(
     jump_modal.title,
@@ -189,19 +189,19 @@ async def jump_button(interaction):
     modal.rows.append(i.to_dict())
   await interaction.response.send_modal(modal)
 
-@discohook.button.new(emoji = '↙️', custom_id = 'downleft:v0.0')
+@discohook.button.new(emoji = '↙️', custom_id = 'downleft:v{}'.format(BOT_VERSION))
 async def downleft_button(interaction):
   await move(interaction, -1, -1)
 
-@discohook.button.new(emoji = '⬇️', custom_id = 'down:v0.0')
+@discohook.button.new(emoji = '⬇️', custom_id = 'down:v{}'.format(BOT_VERSION))
 async def down_button(interaction):
   await move(interaction, 0, -1)
 
-@discohook.button.new(emoji = '↘️', custom_id = 'downright:v0.0')
+@discohook.button.new(emoji = '↘️', custom_id = 'downright:v{}'.format(BOT_VERSION))
 async def downright_button(interaction):
   await move(interaction, 1, -1)
 
-@discohook.button.new('Back To Home', style = discohook.ButtonStyle.grey, custom_id = 'return:v0.0')
+@discohook.button.new('Back To Home', style = discohook.ButtonStyle.grey, custom_id = 'return:v{}'.format(BOT_VERSION))
 async def return_button(interaction):
   await start.StartView(interaction).update()
 
@@ -209,7 +209,7 @@ step_options = [
   discohook.SelectOption(str(i), str(i)) 
   for i in (1, 2, 3, 4, 5, 10, 20, 50, 100, 250)
 ]
-@discohook.select.text(step_options, custom_id = 'step_select:v0.0')
+@discohook.select.text(step_options, custom_id = 'step_select:v{}'.format(BOT_VERSION))
 async def step_select(interaction, values):
   x, y, zoom, old_step, color, _timestamp = get_values(interaction)
   step = int(values[0])
@@ -226,7 +226,7 @@ zoom_options = [
   discohook.SelectOption('{0}x{0}'.format(i), str(i))
   for i in [3, 7, 11, 15, 19, 25, 49, 75, 99, 128]
 ]
-@discohook.select.text(zoom_options, placeholder = 'zoom_select', custom_id = 'zoom_select:v0.0')
+@discohook.select.text(zoom_options, placeholder = 'zoom_select', custom_id = 'zoom_select:v{}'.format(BOT_VERSION))
 async def zoom_select(interaction, values):
   x, y, old_zoom, step, color, _timestamp = get_values(interaction)
   zoom = int(values[0])
