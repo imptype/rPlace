@@ -9,9 +9,9 @@ from ..utils.helpers import get_grid, draw_map
 async def explore_button(interaction):
   await ExploreView(interaction).update()
 
-@discohook.button.new(emoji = '🏅', custom_id = 'top:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.green)
+@discohook.button.new('Rankings', emoji = '🏅', custom_id = 'top:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.green)
 async def top_button(interaction):
-  await interaction.response.send('clicked top button')
+  await interaction.response.send('Coming soon!', ephemeral = True)
 
 @discohook.button.new(emoji = '🔄', custom_id = 'refresh:v{}'.format(BOT_VERSION))
 async def refresh_button(interaction):
