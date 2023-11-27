@@ -144,4 +144,4 @@ async def before_invoke_check(interaction):
   cache = interaction.client.users
   user = interaction.author
   cache[int(user.id)] = get_username(user), user.avatar.url
-  return True  
+  return True

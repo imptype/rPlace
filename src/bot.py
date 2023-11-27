@@ -63,8 +63,8 @@ def run():
   # Set custom ID parser
   @app.custom_id_parser()
   async def custom_id_parser(interaction, custom_id):
-    #if interaction.author.id != '364487161250316289':
-    #  return await interaction.response.send('The bot is under maintenance, you may report to the support server for details!')
+    await helpers.maintenance_check(interaction)
+    await helpers.before_invoke_check(interaction)
     name, version = custom_id.split(':')[:2]
     if version.removeprefix('v') != app.version:
       await interaction.response.send('Message is outdated, please run the command again. (`{}` vs `v{}`)'.format(version, app.version))
