@@ -54,18 +54,18 @@ async def get_username(interaction, user_id):
     cache[user_key] = username
   return username
 
-async def get_guild_name(interaction, guild_id):
+async def get_guild_data(interaction, guild_id):
   cache = interaction.client.guilds
   guild_key = int(guild_id)
-  guild_name = cache.get(guild_key)
-  if guild_name is None:
+  guild_data = cache.get(guild_key)
+  if guild_data is None:
     try:
       guild = await interaction.client.fetch_guild(guild_id)
-      guild_name = guild.name
+      guild_data = guild.name, guild.icon
     except: # fails if not mutual servers or on server widget/server discovery
       guild = False # indicates Unknown user / fetch failed
-    cache[guild_key] = guild_name
-  return guild_name
+    cache[guild_key] = guild_data
+  return guild_data
 
 # space ' ' is reserved to be delimeter
 ascii_chars = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")

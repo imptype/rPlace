@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE
-from ..utils.helpers import get_grid, is_local, get_username, get_guild_name, convert_text, revert_text, draw_map
+from ..utils.helpers import get_grid, is_local, get_username, get_guild_data, convert_text, revert_text, draw_map
 
 BORDER = CANVAS_SIZE - 1
 
@@ -270,6 +270,7 @@ class ExploreView(discohook.View):
     pixel = grid.get(y, {}).get(str(x))
 
     # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
+    guild_icon = None
     if pixel:
       place_disabled = color == pixel[0] # selecting same color
 
@@ -284,7 +285,7 @@ class ExploreView(discohook.View):
         if not is_local_check: # not local canvas command
           if len(pixel) == 5: # from user DMs, 0 1 2 3, 4 guild id not included
             guild_id = revert_text(pixel[4], string.digits)
-            tasks.append(get_guild_name(self.interaction, guild_id))
+            tasks.append(get_guild_data(self.interaction, guild_id))
         
         results = await asyncio.gather(*tasks) # point is to save time by doing both requests at the same time
         
@@ -298,7 +299,12 @@ class ExploreView(discohook.View):
           if len(pixel) == 4: # from user DMs, 0 1 2 3, guild id not included
             guild_text = '*Bot\'s DMs*'
           else:
-            guild_name = results[1] or '*Unknown Server*'
+            guild_data = results[1] # None or Name, Hash
+            if guild_data:
+              guild_name, icon_hash = guild_data
+              guild_icon = 'https://cdn.discordapp.com/icons/{}/{}.png'.format(guild_id, icon_hash)
+            else:
+              guild_name = '*Unknown Server*'
             url = 'https://discord.com/servers/{}'.format(guild_id)
             guild_text = '[{}]({})'.format(guild_name, url)
           text += '\n🏠 {}'.format(guild_text)
@@ -317,6 +323,8 @@ class ExploreView(discohook.View):
       description = text,
       color = COLOR_BLURPLE
     )
+    if guild_icon:
+      self.embed.set_thumbnail(guild_icon)
 
     # calculate pointer cursor
     radius = int(zoom/2)

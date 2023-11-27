@@ -82,7 +82,7 @@ def run():
   # Attach cache
   app.pixels = {} # local_id : grid, this is always updated on pixel placement, not for movement debounce of 1 min though
   app.users = {} # userid : name|None
-  app.guilds = {} # guildid : name|None
+  app.guilds = {} # guildid : name, icon hash|None
 
   # Set bot started at timestamp
   app.started_at = datetime.datetime.utcnow()
