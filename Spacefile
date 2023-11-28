@@ -1,6 +1,6 @@
 # Spacefile Docs: https://go.deta.dev/docs/spacefile/v0
 v: 0
-icon: src/assets/logo.png
+icon: src/assets/icon.png
 micros:
   - name: rPlace
     src: .
