@@ -24,9 +24,17 @@ micros:
       - name: MAIN
       - name: GLOBAL
       - name: LOCAL
+      - name: HOUR
+      - name: DAY
+      - name: WEEK
     actions:
       - id: 'check'
         name: 'Check'
         description: 'Checks for logs'
         trigger: 'schedule'
         default_interval: '* * * * *'
+      - id: 'snap'
+        name: 'Snapshot'
+        description: 'Takes global canvas snapshots'
+        trigger: 'schedule'
+        default_interval: '0 * * * *'

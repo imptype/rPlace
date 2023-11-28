@@ -1,8 +1,12 @@
+import io
 import time
 import string
 import asyncio
+import datetime
+import discohook
 from deta import Deta, Query, Record, Updater
-from ..utils.helpers import convert_text, to_chunks
+from ..utils.helpers import convert_text, to_chunks, get_grid, draw_map
+from ..utils.constants import CANVAS_SIZE
 
 def get_key(local_id, y):
   y_key = str(y).zfill(3)
@@ -18,6 +22,7 @@ class Database(Deta):
     self.app = app
     self.pixels = self.base('pixels')
     self.logs = self.base('logs')
+    self.config = self.base('config')
 
   async def get_grid(self, local_id):
     query = Query()
@@ -135,3 +140,57 @@ class Database(Deta):
     print('start refresh')
     a, b = await asyncio.gather(self.handle_logs(), self.handle_logs(True)) # global and local separately
     print('end refresh {} {}'.format(a, b))
+
+  async def take_snapshot(self):
+    print('start snapshot')
+    grid, refresh_at = await get_grid(self.app)
+
+    def blocking(): # saving is also stuffed here due to blocking
+      im = draw_map(grid, CANVAS_SIZE)
+      buffer = io.BytesIO()
+      im.save(buffer, 'PNG')
+      return buffer
+
+    # draw canvas
+    buffer = await asyncio.to_thread(blocking)
+
+    # args
+    refresh_at = int(refresh_at / 10 ** 7) # fix ords
+    content = '<t:{}:R>'.format(refresh_at)
+    image_file = discohook.File('map.png', content = buffer.getvalue())
+
+    # send to hourly
+    await self.app.hour_webhook.send(content, file = image_file)
+
+    # check if new day or week
+    d = datetime.datetime.fromtimestamp(refresh_at)
+    if 17 < d.hour < 22: # saves unnecessary db reads, between 6:00PM-10:00PM GMT
+
+      query = Query()
+      key = 'snap'
+      query.equals(key)
+      record = (await self.config.fetch([q]))['items']
+      if record:
+        record = record[0]['value']
+      else: # first time
+        record = {
+          'day' : -1,
+          'month' : -1
+        }
+        await self.config.insert(Record(key, {'value' : record}))
+
+      # update new day
+      if d.month != record['month'] or d.day != record['day']:
+        await self.app.day_webhook.send(content, file = image_file)
+        
+        # update new week here too
+        if d.weekday() == 5: # only on saturdays
+          await self.app.week_webhook.send(content, file = image_file)
+        
+        record['day'] = d.day
+        record['month'] = d.month
+
+        updater = Updater()
+        updater.set('value', record)
+        await self.config.update(key, updater)
+    print('end snapshot')

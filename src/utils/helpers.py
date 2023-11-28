@@ -23,16 +23,22 @@ def get_local_id(interaction):
     #local_id = convert_text(local_id, string.digits) # unused because it sometimes breaks deta's querying
   return local_id # ^ saves storage
 
-async def get_grid(interaction, force = False):
-  local_id = get_local_id(interaction)
-  app = interaction.client
+async def get_grid(interaction, force = False): # interaction Client = taking snapshot
+
+  if isinstance(interaction, discohook.Client):
+    app = interaction
+    local_id = None
+  else:
+    app = interaction.client
+    local_id = get_local_id(interaction)
+
   cache = app.pixels
   refresh_cache = app.refreshes
 
   grid = cache.get(local_id)
   refresh_at = refresh_cache.get(local_id) # if grid exists, this will too
   if force or not grid or refresh_at / 10 ** 7 + app.constants.REFRESH_DEBOUNCE < time.time():
-    cache[local_id] = grid = await interaction.client.db.get_grid(local_id)
+    cache[local_id] = grid = await app.db.get_grid(local_id)
     refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
   
   if force: # need to return local id too for updating db

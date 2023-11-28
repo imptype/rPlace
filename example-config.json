@@ -8,5 +8,8 @@
   "DB" : "",
   "MAIN" : "",
   "GLOBAL" : "",
-  "LOCAL" : ""
+  "LOCAL" : "",
+  "HOUR" : "",
+  "DAY" : "",
+  "WEEK" : ""
 }
