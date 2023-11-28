@@ -19,7 +19,7 @@ async def refresh_button(interaction):
   # parse last refresh timestamp on canvas
   refresh_at = int(interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
   
-  grid, new_refresh_at = await get_grid(interaction, with_refresh = True)
+  grid, new_refresh_at = await get_grid(interaction)
 
   if refresh_at == new_refresh_at: # didnt do an update
     return await interaction.response.send('Already up to date.', ephemeral = True)
@@ -49,7 +49,7 @@ class StartView(discohook.View):
     if refresh_data:
       grid, refresh_at = refresh_data
     else: # not from refresh_button
-      grid, refresh_at = await get_grid(self.interaction, with_refresh = True)
+      grid, refresh_at = await get_grid(self.interaction)
 
     def blocking():
       im = draw_map(grid, CANVAS_SIZE)

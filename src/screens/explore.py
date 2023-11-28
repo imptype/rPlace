@@ -15,7 +15,7 @@ def get_values(interaction):
   return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
 
 async def move(interaction, dx, dy):
-  x, y, zoom, step, color, _timestamp = get_values(interaction)
+  x, y, zoom, step, color, refresh_at, _timestamp = get_values(interaction)
 
   # apply step magnitude
   dx *= step
@@ -35,7 +35,7 @@ async def move(interaction, dx, dy):
     y = BORDER
 
   # reuse zoom, step and color in new data
-  data = x, y, zoom, step, color
+  data = x, y, zoom, step, color, refresh_at
   await ExploreView(interaction).update(data)
 
 @discohook.button.new(emoji = '↖️', custom_id = 'upleft:v{}'.format(BOT_VERSION))
@@ -56,7 +56,7 @@ async def color_modal(interaction, color):
   
   # validate timestamp
   try:
-    x, y, zoom, step, old_color, timestamp = get_values(interaction)
+    x, y, zoom, step, old_color, refresh_at, timestamp = get_values(interaction)
     assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
@@ -76,7 +76,7 @@ async def color_modal(interaction, color):
     return await interaction.response.send('Color `{}` is already selected!'.format(color), ephemeral = True)
   
   # all good, update view
-  data = x, y, zoom, step, parsed_color
+  data = x, y, zoom, step, parsed_color, refresh_at
   await ExploreView(interaction).update(data)
 
 @discohook.button.new('Color: #000000', custom_id = 'color:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.grey)
@@ -94,9 +94,9 @@ async def left_button(interaction):
 
 @discohook.button.new(emoji = '🆗', custom_id = 'place:v{}'.format(BOT_VERSION))
 async def place_button(interaction):
-  x, y, zoom, step, color, _timestamp = get_values(interaction)
+  x, y, zoom, step, color, _refresh_at, _timestamp = get_values(interaction)
   
-  grid, local_id = await get_grid(interaction, True) # force refresh
+  grid, refresh_at, local_id = await get_grid(interaction, True) # force refresh
 
   row = grid.get(y)
   x_key = str(x)
@@ -137,8 +137,9 @@ async def place_button(interaction):
   
   # update row/cache
   row[x_key] = tile
-  data = x, y, zoom, step, color
-  await ExploreView(interaction).update(data)
+  data = x, y, zoom, step, color, refresh_at
+  refresh_data = grid, refresh_at
+  await ExploreView(interaction).update(data, refresh_data)
 
   # record log
   guild_name = None
@@ -170,7 +171,7 @@ async def jump_modal(interaction, x, y):
 
   # validate timestamp
   try:
-    old_x, old_y, zoom, step, color, timestamp = get_values(interaction)
+    old_x, old_y, zoom, step, color, refresh_at, timestamp = get_values(interaction)
     assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
@@ -194,7 +195,7 @@ async def jump_modal(interaction, x, y):
     return await interaction.response.send('You are already at tile `({}, {})`!'.format(x, y), ephemeral = True)
 
   # all good, update view
-  data = x, y, zoom, step, color
+  data = x, y, zoom, step, color, refresh_at
   await ExploreView(interaction).update(data)
 
 @discohook.button.new('Jump to (X, Y)', style = discohook.ButtonStyle.grey, custom_id = 'jump:v{}'.format(BOT_VERSION))
@@ -229,7 +230,7 @@ step_options = [
 ]
 @discohook.select.text(step_options, custom_id = 'step_select:v{}'.format(BOT_VERSION))
 async def step_select(interaction, values):
-  x, y, zoom, old_step, color, _timestamp = get_values(interaction)
+  x, y, zoom, old_step, color, refresh_at, _timestamp = get_values(interaction)
   step = int(values[0])
   
   # validate new step
@@ -237,7 +238,7 @@ async def step_select(interaction, values):
     return await interaction.response.send('Step size `{}` is already selected!'.format(step), ephemeral = True)
   
   # update view
-  data = x, y, zoom, step, color
+  data = x, y, zoom, step, color, refresh_at
   await ExploreView(interaction).update(data)
 
 zoom_options = [
@@ -271,20 +272,26 @@ class ExploreView(discohook.View):
       self.add_select(step_select)
       self.add_select(zoom_select)
 
-  async def setup(self, data = None): # ainit
+  async def setup(self, data, refresh_data): # ainit
 
     if data:
-      x, y, zoom, step, color = data
+      x, y, zoom, step, color, old_refresh_at = data
     else: # default, first move
       x = 0
       y = 0
       zoom = 11
       step = 1
       color = 0
-    timestamp = int(time.time() * 1000) # create new timestamp
+    timestamp = int(time.time() * 10 ** 7) # create new timestamp
       
-    app = self.interaction.client
-    grid = await get_grid(self.interaction)
+    if refresh_data: # from button place
+      grid, refresh_at = refresh_data # refresh comaprison is skipped, see below, because we just updated grid from place
+    else:
+      grid, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
+      if data: # only if data exists/clicked component on this view
+        if old_refresh_at > refresh_at: # if old/second instance greater than current refresh, it means current/first instance is outdated
+          grid, refresh_at = await get_grid(self.interaction, force = True)
+
     pixel = grid.get(y, {}).get(str(x))
 
     # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
@@ -369,6 +376,7 @@ class ExploreView(discohook.View):
       pointer[1] = BORDER - y
 
     # draw canvas
+    app = self.interaction.client
     def blocking():
       bim = draw_map(grid, zoom, startx, starty)
 
@@ -408,7 +416,7 @@ class ExploreView(discohook.View):
 
     dynamic_upleft_button = discohook.Button(
       emoji = upleft_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}:{}'.format(upleft_button.custom_id, x, y, zoom, step, color, timestamp),
+      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}'.format(upleft_button.custom_id, x, y, zoom, step, color, refresh_at, timestamp),
       disabled = not x or y == BORDER
     )
     
@@ -486,6 +494,6 @@ class ExploreView(discohook.View):
     self.add_select(dynamic_step_select)
     self.add_select(dynamic_zoom_select)
 
-  async def update(self, data = None): # done in update function, saves pointer memory maybe
-    await self.setup(data)
+  async def update(self, data = None, refresh_data = None): # done in update function, saves pointer memory maybe
+    await self.setup(data, refresh_data) # place button gives refresh data with us
     await self.interaction.response.update_message(embed = self.embed, view = self)

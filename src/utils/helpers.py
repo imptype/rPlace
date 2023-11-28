@@ -23,7 +23,7 @@ def get_local_id(interaction):
     #local_id = convert_text(local_id, string.digits) # unused because it sometimes breaks deta's querying
   return local_id # ^ saves storage
 
-async def get_grid(interaction, force = False, with_refresh = False):
+async def get_grid(interaction, force = False):
   local_id = get_local_id(interaction)
   app = interaction.client
   cache = app.pixels
@@ -31,15 +31,13 @@ async def get_grid(interaction, force = False, with_refresh = False):
 
   grid = cache.get(local_id)
   refresh_at = refresh_cache.get(local_id, 0)
-  if force or not grid or refresh_at + app.constants.REFRESH_DEBOUNCE < time.time():
+  if force or not grid or refresh_at + app.constants.REFRESH_DEBOUNCE < time.time() * 10 ** 7:
     cache[local_id] = grid = await interaction.client.db.get_grid(local_id)
-    refresh_cache[local_id] = refresh_at = int(time.time())
+    refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
   
   if force: # need to return local id too for updating db
-    return grid, local_id
-  elif with_refresh: # startview needs this to decide if refresh button works
-    return grid, refresh_at
-  return grid
+    return grid, refresh_at, local_id 
+  return grid, refresh_at # startview needs this to decide if refresh button works and exploreview too
 
 def get_username(user):
   return user.name if user.discriminator == 0 else '{}#{}'.format(user.name, user.discriminator)
