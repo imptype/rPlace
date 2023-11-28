@@ -21,6 +21,8 @@ async def refresh_button(interaction):
   
   grid, new_refresh_at = await get_grid(interaction)
 
+  print(refresh_at, new_refresh_at)
+
   if refresh_at == new_refresh_at: # didnt do an update
     return await interaction.response.send('Already up to date.', ephemeral = True)
   

@@ -30,8 +30,8 @@ async def get_grid(interaction, force = False):
   refresh_cache = app.refreshes
 
   grid = cache.get(local_id)
-  refresh_at = refresh_cache.get(local_id, 0)
-  if force or not grid or refresh_at + app.constants.REFRESH_DEBOUNCE < time.time() * 10 ** 7:
+  refresh_at = refresh_cache.get(local_id) # if grid exists, this will too
+  if force or not grid or refresh_at / 10 ** 7 + app.constants.REFRESH_DEBOUNCE < time.time():
     cache[local_id] = grid = await interaction.client.db.get_grid(local_id)
     refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
   
