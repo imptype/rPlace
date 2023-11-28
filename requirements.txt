@@ -1,5 +1,5 @@
-git+https://github.com/jnsougata/discohook
-git+https://github.com/jnsougata/deta
-Pillow
-numpy
-uvicorn
+git+https://github.com/jnsougata/discohook.git@9d2c6ad
+git+https://github.com/jnsougata/deta.git@e498e3b
+Pillow==10.1.0
+numpy==1.26.2
+uvicorn==0.24.0.post1
