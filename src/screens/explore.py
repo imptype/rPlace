@@ -247,7 +247,7 @@ zoom_options = [
 ]
 @discohook.select.text(zoom_options, placeholder = 'zoom_select', custom_id = 'zoom_select:v{}'.format(BOT_VERSION))
 async def zoom_select(interaction, values):
-  x, y, old_zoom, step, color, _timestamp = get_values(interaction)
+  x, y, old_zoom, step, color, refresh_at, _timestamp = get_values(interaction)
   zoom = int(values[0])
   
   # validate new zoom
@@ -255,7 +255,7 @@ async def zoom_select(interaction, values):
     return await interaction.response.send('Zoom `{0}x{0}` is already selected!'.format(zoom), ephemeral = True)
   
   # update view
-  data = x, y, zoom, step, color
+  data = x, y, zoom, step, color, refresh_at
   await ExploreView(interaction).update(data)
 
 class ExploreView(discohook.View):
