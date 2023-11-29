@@ -168,7 +168,7 @@ class Database(Deta):
 
       query = Query()
       key = 'snap'
-      query.equals(key)
+      query.equals('key', key)
       record = (await self.config.fetch([query]))['items']
       if record:
         record = record[0]['value']
