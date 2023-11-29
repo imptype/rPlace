@@ -10,7 +10,7 @@ from ..utils.helpers import get_grid, draw_map
 async def explore_button(interaction):
   await ExploreView(interaction).update()
 
-@discohook.button.new('Rankings', emoji = '🏅', custom_id = 'top:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.green)
+@discohook.button.new('Statistics', emoji = '🏅', custom_id = 'top:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.green)
 async def top_button(interaction):
   await TopView(interaction).update()
 
@@ -22,9 +22,8 @@ async def refresh_button(interaction):
   
   grid, new_refresh_at = await get_grid(interaction)
 
-  if refresh_at == new_refresh_at: # didnt do an update
-    return await interaction.response.send('Already up to date.', ephemeral = True)
-  
+  skip_draw = refresh_at >= new_refresh_at # didnt do an update = dont update image
+
   refresh_data = grid, new_refresh_at
   await StartView(interaction).update(refresh_data)
 
@@ -48,20 +47,24 @@ class StartView(discohook.View):
   async def setup(self, refresh_data = None): # ainit
     
     if refresh_data:
-      grid, refresh_at = refresh_data
-    else: # not from refresh_button
+      grid, refresh_at, skip_draw = refresh_data
+    else: # not from refresh_button or top back button
       grid, refresh_at = await get_grid(self.interaction)
+      skip_draw = False
 
-    def blocking():
-      im = draw_map(grid, CANVAS_SIZE)
-      buffer = io.BytesIO()
-      im.save(buffer, 'PNG')
-      return buffer
+    if skip_draw:
+      self.embed.set_image('attachment://map.png')
+    else:
+      def blocking():
+        im = draw_map(grid, CANVAS_SIZE)
+        buffer = io.BytesIO()
+        im.save(buffer, 'PNG')
+        return buffer
 
-    # draw canvas
-    buffer = await asyncio.to_thread(blocking)
+      # draw canvas
+      buffer = await asyncio.to_thread(blocking)
 
-    self.embed.set_image(discohook.File('map.png', content = buffer.getvalue()))
+      self.embed.set_image(discohook.File('map.png', content = buffer.getvalue()))
     
     # stuff custom id of refreshed at in this button
     dynamic_explore_button = discohook.Button(

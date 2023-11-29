@@ -78,10 +78,8 @@ async def color_modal(interaction, color):
   # check whether to update canvas/send new image if refresh happened
   grid, new_refresh_at = await get_grid(interaction)
 
-  if refresh_at == new_refresh_at: # didnt do an update, skip redrawing
-    refresh_data = grid, new_refresh_at, True
-  else:
-    refresh_data = grid, new_refresh_at, False
+  skip_draw = refresh_at >= new_refresh_at # didnt do an update, skip redrawing
+  refresh_data = grid, new_refresh_at, skip_draw
 
   # all good, update view
   data = x, y, zoom, step, parsed_color, new_refresh_at
@@ -230,7 +228,7 @@ async def downright_button(interaction):
 
 @discohook.button.new('Back To Home', style = discohook.ButtonStyle.grey, custom_id = 'return:v{}'.format(BOT_VERSION))
 async def return_button(interaction):
-  await start.StartView(interaction).update()
+  await start.StartView(interaction).update() # cant skip draw here because image changes in size
 
 step_options = [
   discohook.SelectOption(str(i), str(i)) 
@@ -248,10 +246,8 @@ async def step_select(interaction, values):
   # check whether to update canvas/send new image if refresh happened
   grid, new_refresh_at = await get_grid(interaction)
 
-  if refresh_at == new_refresh_at: # didnt do an update, skip redrawing
-    refresh_data = grid, new_refresh_at, True
-  else:
-    refresh_data = grid, new_refresh_at, False
+  skip_draw = refresh_at >= new_refresh_at # didnt do an update, skip redrawing
+  refresh_data = grid, new_refresh_at, skip_draw
 
   # update view
   data = x, y, zoom, step, color, new_refresh_at
@@ -333,7 +329,7 @@ class ExploreView(discohook.View):
         
         user_data = results[0] # contains username, avatar_url else None
         text += '\n🧍 {} | <@{}>'.format(
-          user_data[0] if user_data else '*Unknown User*',
+          user_data[0] if user_data else '*Unknown User*', # deleted accounts probably
           user_id
         )
 

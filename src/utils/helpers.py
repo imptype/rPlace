@@ -74,7 +74,7 @@ async def get_guild_data(interaction, guild_id):
       guild = await interaction.client.fetch_guild(guild_id)
       guild_data = guild.name, guild.icon
     except: # fails if not mutual servers or on server widget/server discovery
-      guild = False # indicates Unknown user / fetch failed
+      guild_data = False # indicates Unknown user / fetch failed
     cache[guild_key] = guild_data
   return guild_data
 
