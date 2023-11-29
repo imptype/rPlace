@@ -4,7 +4,7 @@ import discohook
 from ..screens.explore import ExploreView
 from ..screens.top import TopView
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, BOT_VERSION
-from ..utils.helpers import get_grid, draw_map
+from ..utils.helpers import get_grid, draw_map, get_local_id
 
 @discohook.button.new('Explore', emoji = '🔍', custom_id = 'explore:v{}'.format(BOT_VERSION))
 async def explore_button(interaction):
@@ -13,6 +13,10 @@ async def explore_button(interaction):
 @discohook.button.new('Statistics', emoji = '🏅', custom_id = 'top:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.green)
 async def top_button(interaction):
   await TopView(interaction).update()
+
+@discohook.button.new('Settings [Admin]', emoji = '🛠️', custom_id = 'settings:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+async def settings_button(interaction):
+  await interaction.response.send('click configure')
 
 @discohook.button.new(emoji = '🔄', custom_id = 'refresh:v{}'.format(BOT_VERSION))
 async def refresh_button(interaction):
@@ -42,7 +46,7 @@ class StartView(discohook.View):
         color = COLOR_BLURPLE
       )
     else: # persistent
-      self.add_buttons(explore_button, top_button, refresh_button)
+      self.add_buttons(explore_button, top_button, settings_button, refresh_button)
 
   async def setup(self, refresh_data = None): # ainit
     
@@ -72,7 +76,19 @@ class StartView(discohook.View):
       emoji = explore_button.emoji,
       custom_id = '{}:{}'.format(explore_button.custom_id, refresh_at)
     )
-    self.add_buttons(dynamic_explore_button, top_button, refresh_button)
+
+    local_id = get_local_id(self.interaction)
+    is_admin = bool(local_id and ( # checks if they can edit canvas
+      (
+        self.interaction.guild_id
+        and self.interaction.author.has_permission(discohook.Permission.administrator)
+      ) or not self.interaction.guild_id
+    ))
+
+    if is_admin:
+      self.add_buttons(dynamic_explore_button, top_button, settings_button, refresh_button)
+    else:
+      self.add_buttons(dynamic_explore_button, top_button, refresh_button)
   
   async def send(self):
     await self.setup()
