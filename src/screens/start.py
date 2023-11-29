@@ -3,6 +3,7 @@ import asyncio
 import discohook
 from ..screens.explore import ExploreView
 from ..screens.top import TopView
+from ..screens.settings import SettingsView
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, BOT_VERSION
 from ..utils.helpers import get_grid, draw_map, get_local_id
 
@@ -16,7 +17,7 @@ async def top_button(interaction):
 
 @discohook.button.new('Settings [Admin]', emoji = '🛠️', custom_id = 'settings:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
 async def settings_button(interaction):
-  await interaction.response.send('click configure')
+  await SettingsView(interaction).update()
 
 @discohook.button.new(emoji = '🔄', custom_id = 'refresh:v{}'.format(BOT_VERSION))
 async def refresh_button(interaction):
@@ -28,7 +29,7 @@ async def refresh_button(interaction):
 
   skip_draw = refresh_at >= new_refresh_at # didnt do an update = dont update image
 
-  refresh_data = grid, new_refresh_at
+  refresh_data = grid, new_refresh_at, skip_draw
   await StartView(interaction).update(refresh_data)
 
 class StartView(discohook.View):

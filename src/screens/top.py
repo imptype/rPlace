@@ -4,9 +4,9 @@ import asyncio
 from operator import itemgetter
 from collections import defaultdict
 import discohook
+from . import start
 from ..utils.helpers import get_grid, draw_map, is_local, revert_text, get_guild_data, get_user_data, get_local_id #, convert_text
 from ..utils.constants import BOT_VERSION, CANVAS_SIZE, COLOR_BLURPLE
-from . import start
 
 @discohook.button.new('Back To Home', emoji = '⬅️', custom_id = 'back:v{}'.format(BOT_VERSION))
 async def back_button(interaction):

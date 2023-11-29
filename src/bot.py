@@ -15,6 +15,7 @@ from .cogs.test import test_command
 from .screens.start import StartView
 from .screens.explore import ExploreView, color_modal, jump_modal
 from .screens.top import TopView
+from .screens.settings import SettingsView
 
 def run():
   
@@ -119,6 +120,7 @@ def run():
   app.load_components(StartView())
   app.load_components(ExploreView())
   app.load_components(TopView())
+  app.load_components(SettingsView())
   app.active_components[color_modal.custom_id] = color_modal
   app.active_components[jump_modal.custom_id] = jump_modal
 
@@ -147,12 +149,26 @@ def run():
         '',
         'Test: {}'.format(app.test),
         '',
-        'Pixels Cache: \n  {}'.format('  \n'.join([
+        'Pixels Cache:\n  {}'.format('  \n'.join([
           '{}: {}'.format(local_id, grid) # len so readable
           for local_id, grid in app.pixels.items()
         ])),
-        'Stats Cache: {}'.format(0),
-        '',
+        'Users Cache:\n  {}'.format('  \n'.join([
+          '{}: {}'.format(user_id, user_data)
+          for user_id, user_data in app.users.items()
+        ])),
+        'Guilds Cache:\n  {}'.format('  \n'.join([
+          '{}: {}'.format(guild_id, guild_data)
+          for guild_id, guild_data in app.guilds.items()
+        ])),
+        'Refreshes Cache:\n  {}'.format('  \n'.join([
+          '{}: {}'.format(local_id, timestamp)
+          for local_id, timestamp in app.refreshes.items()
+        ])),
+        'Tops Cache:\n  {}'.format('  \n'.join([
+          '{}: {}'.format(local_id, top_data)
+          for local_id, top_data in app.tops.items()
+        ])),
         'Errors: {}'.format(json.dumps(app.errors, indent = 2)),
       ])
     )
