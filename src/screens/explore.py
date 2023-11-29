@@ -290,7 +290,7 @@ class ExploreView(discohook.View):
       grid, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
       if data: # only if data exists/clicked component on this view
         if old_refresh_at > refresh_at: # if old/second instance greater than current refresh, it means current/first instance is outdated
-          grid, refresh_at = await get_grid(self.interaction, force = True)
+          grid, refresh_at, _local_id = await get_grid(self.interaction, force = True)
 
     pixel = grid.get(y, {}).get(str(x))
 
