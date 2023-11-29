@@ -2,6 +2,7 @@ import io
 import asyncio
 import discohook
 from ..screens.explore import ExploreView
+from ..screens.top import TopView
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, BOT_VERSION
 from ..utils.helpers import get_grid, draw_map
 
@@ -11,7 +12,7 @@ async def explore_button(interaction):
 
 @discohook.button.new('Rankings', emoji = '🏅', custom_id = 'top:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.green)
 async def top_button(interaction):
-  await interaction.response.send('Coming soon!', ephemeral = True)
+  await TopView(interaction).update()
 
 @discohook.button.new(emoji = '🔄', custom_id = 'refresh:v{}'.format(BOT_VERSION))
 async def refresh_button(interaction):
@@ -20,8 +21,6 @@ async def refresh_button(interaction):
   refresh_at = int(interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
   
   grid, new_refresh_at = await get_grid(interaction)
-
-  print(refresh_at, new_refresh_at)
 
   if refresh_at == new_refresh_at: # didnt do an update
     return await interaction.response.send('Already up to date.', ephemeral = True)
@@ -65,12 +64,12 @@ class StartView(discohook.View):
     self.embed.set_image(discohook.File('map.png', content = buffer.getvalue()))
     
     # stuff custom id of refreshed at in this button
-    dyanmic_explore_button = discohook.Button(
+    dynamic_explore_button = discohook.Button(
       explore_button.label,
       emoji = explore_button.emoji,
       custom_id = '{}:{}'.format(explore_button.custom_id, refresh_at)
     )
-    self.add_buttons(dyanmic_explore_button, top_button, refresh_button)
+    self.add_buttons(dynamic_explore_button, top_button, refresh_button)
   
   async def send(self):
     await self.setup()
