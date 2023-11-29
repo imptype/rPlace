@@ -5,7 +5,7 @@ from . import start
 from ..utils.helpers import draw_map, get_grid
 from ..utils.constants import BOT_VERSION, COLOR_RED, CANVAS_SIZE
 
-@discohook.button.new('Back To Home', emoji = '⬅️', custom_id = 'settings_back:v{}'.format(BOT_VERSION))
+@discohook.button.new('Back To Home', emoji = '⬅️', custom_id = 'admin_back:v{}'.format(BOT_VERSION))
 async def back_button(interaction):
 
   # parse last refresh timestamp on canvas
@@ -18,15 +18,15 @@ async def back_button(interaction):
   refresh_data = grid, new_refresh_at, skip_draw
   await start.StartView(interaction).update(refresh_data)
 
-@discohook.button.new('Resize Canvas', emoji = '📐', custom_id = 'settings_resize:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+@discohook.button.new('Resize Canvas', emoji = '📐', custom_id = 'admin_resize:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
 async def resize_button(interaction):
   await interaction.response.send('click resize')
 
-@discohook.button.new('Set Cooldown', emoji = '⏰', custom_id = 'settings_cooldown:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+@discohook.button.new('Set Cooldown', emoji = '⏰', custom_id = 'admin_cooldown:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
 async def cooldown_button(interaction):
   await interaction.response.send('click set cooldown')
 
-@discohook.button.new('Set Allowed Role', emoji = '👤', custom_id = 'settings_role:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+@discohook.button.new('Set Allowed Role', emoji = '👤', custom_id = 'admin_role:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
 async def allowed_button(interaction):
   await interaction.response.send('click set allowed role')
 

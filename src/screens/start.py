@@ -5,7 +5,7 @@ from ..screens.explore import ExploreView
 from ..screens.top import TopView
 from ..screens.settings import SettingsView
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, BOT_VERSION
-from ..utils.helpers import get_grid, draw_map, get_local_id
+from ..utils.helpers import get_grid, draw_map, get_local_id, is_admin
 
 @discohook.button.new('Explore', emoji = '🔍', custom_id = 'explore:v{}'.format(BOT_VERSION))
 async def explore_button(interaction):
@@ -79,14 +79,9 @@ class StartView(discohook.View):
     )
 
     local_id = get_local_id(self.interaction)
-    is_admin = bool(local_id and ( # checks if they can edit canvas
-      (
-        self.interaction.guild_id
-        and self.interaction.author.has_permission(discohook.Permission.administrator)
-      ) or not self.interaction.guild_id
-    ))
+    is_admin_check = bool(local_id and is_admin(self.interaction)) # checks if they can edit canvas
 
-    if is_admin:
+    if is_admin_check:
       self.add_buttons(dynamic_explore_button, top_button, settings_button, refresh_button)
     else:
       self.add_buttons(dynamic_explore_button, top_button, refresh_button)

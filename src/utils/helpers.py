@@ -149,3 +149,11 @@ async def before_invoke_check(interaction):
   user = interaction.author
   cache[int(user.id)] = get_username(user), user.avatar.url
   return True
+
+def is_admin(interaction):
+  return bool(
+    (
+      interaction.guild_id
+      and interaction.author.has_permission(discohook.Permission.administrator)
+    ) or not interaction.guild_id
+  )

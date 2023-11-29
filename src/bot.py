@@ -73,6 +73,10 @@ def run():
       return
     if not interaction.from_originator:
       await interaction.response.send('This is not your interaction, please run your own instance of the command.', ephemeral = True)
+      return
+    if name.startswith('admin_') and not helpers.is_admin(interaction):
+      await interaction.response.send('You do not have administrator permissions anymore so you cannot interact with this component.')
+      return
     return ':'.join([name, version])
 
   # Attach other webhooks
