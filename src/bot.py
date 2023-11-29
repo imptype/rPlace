@@ -101,6 +101,7 @@ def run():
   app.users = {} # userid : name, avatar_url|None # not hash because supported by lib
   app.guilds = {} # guildid : name, icon hash|None
   app.refreshes = {} # local_id : int(timestamp) # indicates whether canvas was refreshed or not
+  app.tops = {} # local_id : (top data), saves processing and currently has delays in updating
 
   # Set bot started at timestamp
   app.started_at = datetime.datetime.utcnow()

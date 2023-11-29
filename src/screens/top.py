@@ -4,7 +4,7 @@ import asyncio
 from operator import itemgetter
 from collections import defaultdict
 import discohook
-from ..utils.helpers import get_grid, draw_map, is_local, revert_text, get_guild_data, get_user_data #, convert_text
+from ..utils.helpers import get_grid, draw_map, is_local, revert_text, get_guild_data, get_user_data, get_local_id #, convert_text
 from ..utils.constants import BOT_VERSION, CANVAS_SIZE, COLOR_BLURPLE
 from . import start
 
@@ -93,68 +93,76 @@ class TopView(discohook.View):
       for y in range(100)
     }
     print('grid', time.time() - now)"""
-    
-    # flatten grid so we can do operations on it :/
-    n = 3 # how many of each to show
-    guilds = defaultdict(int) # id : count, needs value sorting
-    users = defaultdict(int) # id : count, needs value sorting
-    colors = defaultdict(int)# color : count, needs value sorting
-    locations = [] # up to 3
-    oldest = [] # up to 3
-    for y in grid:
-      for x in grid[y]:
-        if flag:
-          if flag == 2: # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
-            guilds[grid[y][x][4]] += 1
-          users[grid[y][x][3]] += 1
-        colors[grid[y][x][0]] += 1
-        if len(locations) != n:
-          locations.append((int(x), y, grid[y][x][2]))
-        elif grid[y][x][2] > locations[-1][2]: # bigger than smallest
-          p = n - 1 # insert position
-          for i, v in enumerate(locations[:-1]):
-            if grid[y][x][2] > v[2]:
-              p = i
-              break
-          locations.insert(p, (int(x), y, grid[y][x][2]))
-          del locations[-1]
-        if len(oldest) != n:
-          oldest.append((int(x), y, grid[y][x][1]))
-        elif grid[y][x][1] < oldest[-1][2]: # smaller than biggest
-          p = n - 1 # insert position
-          for i, v in enumerate(oldest[:-1]):
-            if grid[y][x][1] < v[2]:
-              p = i
-              break
-          oldest.insert(p, (int(x), y, grid[y][x][1]))
-          del oldest[-1]
-      
-    guilds = {revert_text(k, string.digits) : v for i, (k, v) in enumerate(sorted(guilds.items(), key = itemgetter(1), reverse = True)) if i < n}
-    users = {revert_text(k, string.digits) : v for i, (k, v) in enumerate(sorted(users.items(), key = itemgetter(1), reverse = True)) if i < n}
-    colors = {k: v for i, (k, v) in enumerate(sorted(colors.items(), key = itemgetter(1), reverse = True)) if i < n}
-    # print('end', time.time() - now)
 
-    async def task(snowflake_id, count, flag = False): # false = guild, true = user
-      coro = get_user_data if flag else get_guild_data
-      return flag, snowflake_id, count, await coro(self.interaction, snowflake_id)
+    # reuse cached top or recalculate it
+    local_id = get_local_id(self.interaction)
+    cache = self.interaction.client.tops
+    top_data = cache.get(local_id)
+    if top_data:
+      guilds, users, colors, locations, oldest = top_data
+    else:
+      # avoiding flattening grid to save memory/time
+      n = 3 # how many of each to show
+      guilds = defaultdict(int) # id : count, needs value sorting
+      users = defaultdict(int) # id : count, needs value sorting
+      colors = defaultdict(int)# color : count, needs value sorting
+      locations = [] # up to 3
+      oldest = [] # up to 3
+      for y in grid:
+        for x in grid[y]:
+          if flag:
+            if flag == 2: # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
+              guilds[grid[y][x][4]] += 1
+            users[grid[y][x][3]] += 1
+          colors[grid[y][x][0]] += 1
+          if len(locations) != n:
+            locations.append((int(x), y, grid[y][x][2]))
+          elif grid[y][x][2] > locations[-1][2]: # bigger than smallest
+            p = n - 1 # insert position
+            for i, v in enumerate(locations[:-1]):
+              if grid[y][x][2] > v[2]:
+                p = i
+                break
+            locations.insert(p, (int(x), y, grid[y][x][2]))
+            del locations[-1]
+          if len(oldest) != n:
+            oldest.append((int(x), y, grid[y][x][1]))
+          elif grid[y][x][1] < oldest[-1][2]: # smaller than biggest
+            p = n - 1 # insert position
+            for i, v in enumerate(oldest[:-1]):
+              if grid[y][x][1] < v[2]:
+                p = i
+                break
+            oldest.insert(p, (int(x), y, grid[y][x][1]))
+            del oldest[-1]
+        
+      guilds = {revert_text(k, string.digits) : v for i, (k, v) in enumerate(sorted(guilds.items(), key = itemgetter(1), reverse = True)) if i < n}
+      users = {revert_text(k, string.digits) : v for i, (k, v) in enumerate(sorted(users.items(), key = itemgetter(1), reverse = True)) if i < n}
+      colors = {k: v for i, (k, v) in enumerate(sorted(colors.items(), key = itemgetter(1), reverse = True)) if i < n}
+      # print('end', time.time() - now)
 
-    tasks = [
-      task(k, v)
-      for k, v in guilds.items()
-    ] + [
-      task(k, v, True)
-      for k, v in users.items()
-    ]
+      async def task(snowflake_id, count, flag = False): # false = guild, true = user
+        coro = get_user_data if flag else get_guild_data
+        return flag, snowflake_id, count, await coro(self.interaction, snowflake_id)
 
-    results = await asyncio.gather(*tasks) # do top user and guild fetches at the same time
-    for inner_flag, snowflake_id, count, data in results:
-      if inner_flag:
-        table = users
-      else:
-        table = guilds
-      table[snowflake_id] = (count, data)
+      tasks = [
+        task(k, v)
+        for k, v in guilds.items()
+      ] + [
+        task(k, v, True)
+        for k, v in users.items()
+      ]
 
-    print(guilds, users, colors, locations, oldest, sep = '\n')
+      results = await asyncio.gather(*tasks) # do top user and guild fetches at the same time
+      for inner_flag, snowflake_id, count, data in results:
+        if inner_flag:
+          table = users
+        else:
+          table = guilds
+        table[snowflake_id] = (count, data)
+
+      top_data = guilds, users, colors, locations, oldest
+      cache[local_id] = top_data
 
     def get_rank(i):
       if i == 0:
