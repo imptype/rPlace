@@ -75,9 +75,17 @@ async def color_modal(interaction, color):
   if parsed_color == old_color:
     return await interaction.response.send('Color `{}` is already selected!'.format(color), ephemeral = True)
   
+  # check whether to update canvas/send new image if refresh happened
+  grid, new_refresh_at = await get_grid(interaction)
+
+  if refresh_at == new_refresh_at: # didnt do an update, skip redrawing
+    refresh_data = grid, new_refresh_at, True
+  else:
+    refresh_data = grid, new_refresh_at, False
+
   # all good, update view
-  data = x, y, zoom, step, parsed_color, refresh_at
-  await ExploreView(interaction).update(data)
+  data = x, y, zoom, step, parsed_color, new_refresh_at
+  await ExploreView(interaction).update(data, refresh_data)
 
 @discohook.button.new('Color: #000000', custom_id = 'color:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.grey)
 async def color_button(interaction):
@@ -138,7 +146,7 @@ async def place_button(interaction):
   # update row/cache
   row[x_key] = tile
   data = x, y, zoom, step, color, refresh_at
-  refresh_data = grid, refresh_at
+  refresh_data = grid, refresh_at, False
   await ExploreView(interaction).update(data, refresh_data)
 
   # record log
@@ -237,9 +245,17 @@ async def step_select(interaction, values):
   if step == old_step:
     return await interaction.response.send('Step size `{}` is already selected!'.format(step), ephemeral = True)
   
+  # check whether to update canvas/send new image if refresh happened
+  grid, new_refresh_at = await get_grid(interaction)
+
+  if refresh_at == new_refresh_at: # didnt do an update, skip redrawing
+    refresh_data = grid, new_refresh_at, True
+  else:
+    refresh_data = grid, new_refresh_at, False
+
   # update view
-  data = x, y, zoom, step, color, refresh_at
-  await ExploreView(interaction).update(data)
+  data = x, y, zoom, step, color, new_refresh_at
+  await ExploreView(interaction).update(data, refresh_data)
 
 zoom_options = [
   discohook.SelectOption('{0}x{0}'.format(i), str(i))
@@ -285,9 +301,10 @@ class ExploreView(discohook.View):
     timestamp = int(time.time() * 10 ** 7) # create new timestamp
       
     if refresh_data: # from button place
-      grid, refresh_at = refresh_data # refresh comaprison is skipped, see below, because we just updated grid from place
+      grid, refresh_at, skip_draw = refresh_data # refresh comaprison is skipped, see below, because we just updated grid from place
     else:
       grid, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
+      skip_draw = False
       if data: # only if data exists/clicked component on this view
         if old_refresh_at > refresh_at: # if old/second instance greater than current refresh, it means current/first instance is outdated
           grid, refresh_at, _local_id = await get_grid(self.interaction, force = True)
@@ -355,64 +372,67 @@ class ExploreView(discohook.View):
     if thumbnail_url:
       self.embed.set_thumbnail(thumbnail_url)
 
-    # calculate pointer cursor
-    radius = int(zoom/2)
-    pointer = [radius] * 2
+    if skip_draw: # saves redrawing pointlessly if it hasn't refreshed
+      self.embed.set_image('attachment://map.png')
+    else:
+      # calculate pointer cursor
+      radius = int(zoom/2)
+      pointer = [radius] * 2
 
-    startx = x - radius
-    if startx < 0:
-      startx = 0
-      pointer[0] = x
-    elif x + radius > BORDER:
-      startx = CANVAS_SIZE - zoom
-      pointer[0] = zoom - (CANVAS_SIZE - x)
+      startx = x - radius
+      if startx < 0:
+        startx = 0
+        pointer[0] = x
+      elif x + radius > BORDER:
+        startx = CANVAS_SIZE - zoom
+        pointer[0] = zoom - (CANVAS_SIZE - x)
 
-    starty = y - radius
-    if starty < 0:
-      starty = 0
-      pointer[1] = zoom - 1 - y
-    elif y + radius > BORDER:
-      starty = CANVAS_SIZE - zoom
-      pointer[1] = BORDER - y
+      starty = y - radius
+      if starty < 0:
+        starty = 0
+        pointer[1] = zoom - 1 - y
+      elif y + radius > BORDER:
+        starty = CANVAS_SIZE - zoom
+        pointer[1] = BORDER - y
 
-    # draw canvas
-    app = self.interaction.client
-    def blocking():
-      bim = draw_map(grid, zoom, startx, starty)
+      # draw canvas
+      app = self.interaction.client
+      def blocking():
+        bim = draw_map(grid, zoom, startx, starty)
 
-      # draw cursor if not cached
-      n = 8 # cursor is 8px in size
-      if not app.cursor:
-        s = 3 # arrow width is 3px
-        c = (0, 187, 212, 255) # blue tint
-        a = np.full((n, n, 4), (0, 0, 0, 0), np.uint8)
+        # draw cursor if not cached
+        n = 8 # cursor is 8px in size
+        if not app.cursor:
+          s = 3 # arrow width is 3px
+          c = (0, 187, 212, 255) # blue tint
+          a = np.full((n, n, 4), (0, 0, 0, 0), np.uint8)
 
-        # widths, 3px top left, right, bottom, right
-        a[0, :s] = c 
-        a[-1, :s] = c
-        a[0, -s:] = c
-        a[-1, -s:] = c
+          # widths, 3px top left, right, bottom, right
+          a[0, :s] = c 
+          a[-1, :s] = c
+          a[0, -s:] = c
+          a[-1, -s:] = c
 
-        # heights, 2px
-        a[1:s, 0] = c
-        a[1:s, -1] = c
-        a[-s:-1, 0] = c
-        a[-s:-1, -1] = c
+          # heights, 2px
+          a[1:s, 0] = c
+          a[1:s, -1] = c
+          a[-s:-1, 0] = c
+          a[-s:-1, -1] = c
 
-        cim = Image.fromarray(a)
-        app.cursor = cim
+          cim = Image.fromarray(a)
+          app.cursor = cim
+        
+        im = bim.resize(np.array(bim.size) * n, Image.Resampling.NEAREST)
+        im.paste(app.cursor, tuple(np.array(pointer) * n), app.cursor)  # assuming max size doesn't exceed 128, this is fine
+        im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
+        buffer = io.BytesIO()
+        im.save(buffer, 'PNG')
+        return buffer
       
-      im = bim.resize(np.array(bim.size) * n, Image.Resampling.NEAREST)
-      im.paste(app.cursor, tuple(np.array(pointer) * n), app.cursor)  # assuming max size doesn't exceed 128, this is fine
-      im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
-      buffer = io.BytesIO()
-      im.save(buffer, 'PNG')
-      return buffer
-    
-    buffer = await asyncio.to_thread(blocking)
+      buffer = await asyncio.to_thread(blocking)
 
-    # get pixel data from grid above and format it into the embed below 
-    self.embed.set_image(discohook.File('map.png', content = buffer.getvalue()))
+      # get pixel data from grid above and format it into the embed below 
+      self.embed.set_image(discohook.File('map.png', content = buffer.getvalue()))
 
     dynamic_upleft_button = discohook.Button(
       emoji = upleft_button.emoji,
@@ -495,5 +515,5 @@ class ExploreView(discohook.View):
     self.add_select(dynamic_zoom_select)
 
   async def update(self, data = None, refresh_data = None): # done in update function, saves pointer memory maybe
-    await self.setup(data, refresh_data) # place button gives refresh data with us
+    await self.setup(data, refresh_data) # place button gives refresh data with us or False if skip update for step/color
     await self.interaction.response.update_message(embed = self.embed, view = self)
