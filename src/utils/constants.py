@@ -2,7 +2,7 @@
 Contains constants, not secrets but things that might change.
 """
 
-BOT_VERSION = '3.1_b'
+BOT_VERSION = '3.1'
 
 # Bot stuff
 BOT_AVATAR_URL = 'https://cdn.discordapp.com/avatars/970423357206061056/16c2bb057a54a0ab358d1b36f15d169d.png'

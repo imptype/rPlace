@@ -137,12 +137,9 @@ class Database(Deta):
     return len(records)
 
   async def refresh_logs(self):
-    print('start refresh')
     a, b = await asyncio.gather(self.handle_logs(), self.handle_logs(True)) # global and local separately
-    print('end refresh {} {}'.format(a, b))
 
   async def take_snapshot(self):
-    print('start snapshot')
     grid, refresh_at = await get_grid(self.app)
 
     def blocking(): # saving is also stuffed here due to blocking
@@ -193,4 +190,3 @@ class Database(Deta):
         updater = Updater()
         updater.set('value', record)
         await self.config.update(key, updater)
-    print('end snapshot')
