@@ -157,9 +157,7 @@ class Database(Deta):
     image_file = discohook.File('map.png', content = buffer.getvalue())
 
     # send to hourly
-    resp = await self.app.hour_webhook.send(content, file = image_file, wait = True)
-    print('this is resp', resp)
-    await resp.crosspost()
+    await (await self.app.hour_webhook.send(content, file = image_file, wait = True)).crosspost()
 
     # check if new day or week
     d = datetime.datetime.fromtimestamp(refresh_at)
@@ -180,11 +178,11 @@ class Database(Deta):
 
       # update new day
       if d.month != record['month'] or d.day != record['day']:
-        await self.app.day_webhook.send(content, file = image_file)
+        await (await self.app.day_webhook.send(content, file = image_file, wait = True)).crosspost()
         
         # update new week here too
         if d.weekday() == 5: # only on saturdays
-          await self.app.week_webhook.send(content, file = image_file)
+          await (await self.app.week_webhook.send(content, file = image_file, wait = True)).crosspost()
         
         record['day'] = d.day
         record['month'] = d.month
