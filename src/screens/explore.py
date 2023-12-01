@@ -76,10 +76,10 @@ async def color_modal(interaction, color):
     return await interaction.response.send('Color `{}` is already selected!'.format(color), ephemeral = True)
   
   # check whether to update canvas/send new image if refresh happened
-  grid, new_refresh_at = await get_grid(interaction)
+  grid, defer_response, new_refresh_at = await get_grid(interaction)
 
   skip_draw = refresh_at >= new_refresh_at # didnt do an update, skip redrawing
-  refresh_data = grid, new_refresh_at, skip_draw
+  refresh_data = grid, defer_response, new_refresh_at, skip_draw
 
   # all good, update view
   data = x, y, zoom, step, parsed_color, new_refresh_at
@@ -102,7 +102,7 @@ async def left_button(interaction):
 async def place_button(interaction):
   x, y, zoom, step, color, _refresh_at, _timestamp = get_values(interaction)
   
-  grid, refresh_at, local_id = await get_grid(interaction, True) # force refresh
+  grid, defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
 
   row = grid.get(y)
   x_key = str(x)
@@ -144,7 +144,7 @@ async def place_button(interaction):
   # update row/cache
   row[x_key] = tile
   data = x, y, zoom, step, color, refresh_at
-  refresh_data = grid, refresh_at, False
+  refresh_data = grid, defer_response, refresh_at, False
   await ExploreView(interaction).update(data, refresh_data)
 
   # record log
@@ -244,10 +244,10 @@ async def step_select(interaction, values):
     return await interaction.response.send('Step size `{}` is already selected!'.format(step), ephemeral = True)
   
   # check whether to update canvas/send new image if refresh happened
-  grid, new_refresh_at = await get_grid(interaction)
+  grid, defer_response, new_refresh_at = await get_grid(interaction)
 
   skip_draw = refresh_at >= new_refresh_at # didnt do an update, skip redrawing
-  refresh_data = grid, new_refresh_at, skip_draw
+  refresh_data = grid, defer_response, new_refresh_at, skip_draw
 
   # update view
   data = x, y, zoom, step, color, new_refresh_at
@@ -297,13 +297,13 @@ class ExploreView(discohook.View):
     timestamp = int(time.time() * 10 ** 7) # create new timestamp
       
     if refresh_data: # from button place
-      grid, refresh_at, skip_draw = refresh_data # refresh comaprison is skipped, see below, because we just updated grid from place
+      grid, self.defer_response, refresh_at, skip_draw = refresh_data # refresh comaprison is skipped, see below, because we just updated grid from place
     else:
-      grid, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
+      grid, self.defer_response, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
       skip_draw = False
       if data: # only if data exists/clicked component on this view
         if old_refresh_at > refresh_at: # if old/second instance greater than current refresh, it means current/first instance is outdated
-          grid, refresh_at, _local_id = await get_grid(self.interaction, force = True)
+          grid, self.defer_response, refresh_at, _local_id = await get_grid(self.interaction, force = True)
 
     pixel = grid.get(y, {}).get(str(x))
 
@@ -512,4 +512,7 @@ class ExploreView(discohook.View):
 
   async def update(self, data = None, refresh_data = None): # done in update function, saves pointer memory maybe
     await self.setup(data, refresh_data) # place button gives refresh data with us or False if skip update for step/color
-    await self.interaction.response.update_message(embed = self.embed, view = self)
+    if self.defer_response:
+      await self.defer_response.edit(embed = self.embed, view = self)
+    else:
+      await self.interaction.response.update_message(embed = self.embed, view = self)

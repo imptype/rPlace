@@ -37,13 +37,15 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
 
   grid = cache.get(local_id)
   refresh_at = refresh_cache.get(local_id) # if grid exists, this will too
+  defer_response = None
   if force or grid is None or refresh_at / 10 ** 7 + app.constants.REFRESH_DEBOUNCE < time.time():
+    defer_response = await interaction.response.defer()
     cache[local_id] = grid = await app.db.get_grid(local_id)
     refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
   
   if force: # need to return local id too for updating db
-    return grid, refresh_at, local_id 
-  return grid, refresh_at # startview needs this to decide if refresh button works and exploreview too
+    return grid, defer_response, refresh_at, local_id
+  return grid, defer_response, refresh_at # startview needs this to decide if refresh button works and exploreview too
 
 def get_username(user):
   return user.name if user.discriminator == 0 else '{}#{}'.format(user.name, user.discriminator)

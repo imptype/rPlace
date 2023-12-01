@@ -137,10 +137,10 @@ class Database(Deta):
     return len(records)
 
   async def refresh_logs(self):
-    a, b = await asyncio.gather(self.handle_logs(), self.handle_logs(True)) # global and local separately
+    await asyncio.gather(self.handle_logs(), self.handle_logs(True)) # global and local separately
 
   async def take_snapshot(self):
-    grid, refresh_at = await get_grid(self.app)
+    grid, _defer_response, refresh_at = await get_grid(self.app)
 
     def blocking(): # saving is also stuffed here due to blocking
       im = draw_map(grid, CANVAS_SIZE)

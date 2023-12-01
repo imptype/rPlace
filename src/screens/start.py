@@ -25,11 +25,11 @@ async def refresh_button(interaction):
   # parse last refresh timestamp on canvas
   refresh_at = int(interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
   
-  grid, new_refresh_at = await get_grid(interaction)
+  grid, defer_response, new_refresh_at = await get_grid(interaction)
 
   skip_draw = refresh_at >= new_refresh_at # didnt do an update = dont update image
 
-  refresh_data = grid, new_refresh_at, skip_draw
+  refresh_data = grid, defer_response, new_refresh_at, skip_draw
   await StartView(interaction).update(refresh_data)
 
 class StartView(discohook.View):
@@ -52,9 +52,9 @@ class StartView(discohook.View):
   async def setup(self, refresh_data = None): # ainit
     
     if refresh_data:
-      grid, refresh_at, skip_draw = refresh_data
+      grid, self.defer_response, refresh_at, skip_draw = refresh_data
     else: # not from refresh_button or top back button
-      grid, refresh_at = await get_grid(self.interaction)
+      grid, self.defer_response, refresh_at = await get_grid(self.interaction)
       skip_draw = False
 
     if skip_draw:
@@ -88,8 +88,15 @@ class StartView(discohook.View):
   
   async def send(self):
     await self.setup()
-    await self.interaction.response.send(embed = self.embed, view = self)
+    if self.defer_response: # if grid reloaded, it has to be deferred
+      # this is meant to be self.defer_response.send(), lib put followup in interaction.response
+      await self.interaction.response.followup(embed = self.embed, view = self)
+    else:
+      await self.interaction.response.send(embed = self.embed, view = self)
 
   async def update(self, refresh_data = None):
     await self.setup(refresh_data)
-    await self.interaction.response.update_message(embed = self.embed, view = self)
+    if self.defer_response:
+      await self.defer_response.edit(embed = self.embed, view = self)
+    else:
+      await self.interaction.response.update_message(embed = self.embed, view = self)

@@ -14,11 +14,11 @@ async def back_button(interaction):
   # parse last refresh timestamp on canvas
   refresh_at = int(interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
   
-  grid, new_refresh_at = await get_grid(interaction)
+  grid, defer_response, new_refresh_at = await get_grid(interaction)
 
   skip_draw = refresh_at >= new_refresh_at # didnt do an update = dont update image
   
-  refresh_data = grid, new_refresh_at, skip_draw
+  refresh_data = grid, defer_response, new_refresh_at, skip_draw
   await start.StartView(interaction).update(refresh_data)
 
 # pagination is unused for now
@@ -73,7 +73,7 @@ class TopView(discohook.View):
         flag = 1
     
     # get grid
-    grid, new_refresh_at = await get_grid(self.interaction)
+    grid, self.defer_response, new_refresh_at = await get_grid(self.interaction)
     
     # benchmarks 
     # 100 0.0007
@@ -300,4 +300,7 @@ class TopView(discohook.View):
   
   async def update(self):
     await self.setup()
-    await self.interaction.response.update_message(embed = self.embed, view = self)
+    if self.defer_response:
+      await self.defer_response.edit(embed = self.embed, view = self)
+    else:
+      await self.interaction.response.update_message(embed = self.embed, view = self)
