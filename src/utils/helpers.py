@@ -9,6 +9,9 @@ import discohook
 import numpy as np
 from PIL import Image
 
+# space ' ' is reserved to be delimeter
+ASCII_CHARS = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
+
 def is_local(interaction):
   if interaction.kind == 2: # app command, just started
     value = interaction.payload['data']
@@ -35,17 +38,17 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
   cache = app.pixels
   refresh_cache = app.refreshes
 
-  grid = cache.get(local_id)
+  grid_data = cache.get(local_id) # grid {}, configs {}
   refresh_at = refresh_cache.get(local_id) # if grid exists, this will too
   defer_response = None
-  if force or grid is None or refresh_at / 10 ** 7 + app.constants.REFRESH_DEBOUNCE < time.time():
+  if force or grid_data is None or refresh_at / 10 ** 7 + app.constants.REFRESH_DEBOUNCE < time.time():
     defer_response = await interaction.response.defer()
-    cache[local_id] = grid = await app.db.get_grid(local_id)
+    cache[local_id] = grid_data = await app.db.get_grid(local_id)
     refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
   
   if force: # need to return local id too for updating db
-    return grid, defer_response, refresh_at, local_id
-  return grid, defer_response, refresh_at # startview needs this to decide if refresh button works and exploreview too
+    return grid_data, defer_response, refresh_at, local_id
+  return grid_data, defer_response, refresh_at # startview needs this to decide if refresh button works and exploreview too
 
 def get_username(user):
   return user.name if user.discriminator == 0 else '{}#{}'.format(user.name, user.discriminator)
@@ -80,9 +83,6 @@ async def get_guild_data(interaction, guild_id):
     cache[guild_key] = guild_data
   return guild_data
 
-# space ' ' is reserved to be delimeter
-ascii_chars = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
-
 def power_sum(values, base, offset = 0):
   return sum(value * base ** (index + offset) for index, value in enumerate(values))
 
@@ -93,12 +93,12 @@ def convert_text(text, chars):
   result = ''
   for char in text:
     value = chars[char] # indexerror = missing that char in char set
-    if value * base ** len(temp) + power_sum(temp, base, 1) > len(ascii_chars): 
-      result += ascii_chars[power_sum(temp, base)]
+    if value * base ** len(temp) + power_sum(temp, base, 1) > len(ASCII_CHARS): 
+      result += ASCII_CHARS[power_sum(temp, base)]
       temp = [value]
     else:
       temp.append(value)
-  result += ascii_chars[power_sum(temp, base)]
+  result += ASCII_CHARS[power_sum(temp, base)]
   return result
     
 def revert_text(text, chars):
@@ -106,7 +106,7 @@ def revert_text(text, chars):
   chars = list(chars)
   result = ''
   for char in text:
-    value = ascii_chars.index(char)
+    value = ASCII_CHARS.index(char)
     while value:
       result += chars[(value % base) - 1]
       value //= base
@@ -159,3 +159,9 @@ def is_admin(interaction):
       and interaction.author.has_permission(discohook.Permission.administrator)
     ) or not interaction.guild_id
   )
+
+def encrypt_text(text):
+  pass
+
+def decrypt_text(text):
+  pass

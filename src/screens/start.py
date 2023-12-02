@@ -25,11 +25,11 @@ async def refresh_button(interaction):
   # parse last refresh timestamp on canvas
   refresh_at = int(interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
   
-  grid, defer_response, new_refresh_at = await get_grid(interaction)
+  grid_data, defer_response, new_refresh_at = await get_grid(interaction)
 
   skip_draw = refresh_at >= new_refresh_at # didnt do an update = dont update image
 
-  refresh_data = grid, defer_response, new_refresh_at, skip_draw
+  refresh_data = grid_data, defer_response, new_refresh_at, skip_draw
   await StartView(interaction).update(refresh_data)
 
 class StartView(discohook.View):
@@ -37,31 +37,33 @@ class StartView(discohook.View):
     super().__init__()
     if interaction:
       self.interaction = interaction
-      self.embed = discohook.Embed(
-        'Welcome to r/Place!',
-        description = '\n'.join([
-          'Canvas size: 1000x1000',
-          '',
-          'Click 🔍 **Explore** to start exploring!'
-        ]),
-        color = COLOR_BLURPLE
-      )
     else: # persistent
       self.add_buttons(explore_button, top_button, settings_button, refresh_button)
 
   async def setup(self, refresh_data = None): # ainit
     
     if refresh_data:
-      grid, self.defer_response, refresh_at, skip_draw = refresh_data
+      (grid, configs), self.defer_response, refresh_at, skip_draw = refresh_data
     else: # not from refresh_button or top back button
-      grid, self.defer_response, refresh_at = await get_grid(self.interaction)
+      (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction)
       skip_draw = False
+
+    size = configs.get('size', CANVAS_SIZE)
+    self.embed = discohook.Embed(
+      'Welcome to r/Place!',
+      description = '\n'.join([
+        'Canvas size: {0}x{0}'.format(size),
+        '',
+        'Click 🔍 **Explore** to start exploring!'
+      ]),
+      color = COLOR_BLURPLE
+    )
 
     if skip_draw:
       self.embed.set_image('attachment://map.png')
     else:
       def blocking():
-        im = draw_map(grid, CANVAS_SIZE)
+        im = draw_map(grid, size)
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer

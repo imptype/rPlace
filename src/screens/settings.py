@@ -11,11 +11,11 @@ async def back_button(interaction):
   # parse last refresh timestamp on canvas
   refresh_at = int(interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
   
-  grid, defer_response, new_refresh_at = await get_grid(interaction)
+  grid_data, defer_response, new_refresh_at = await get_grid(interaction)
 
   skip_draw = refresh_at >= new_refresh_at # didnt do an update = dont update image
   
-  refresh_data = grid, defer_response, new_refresh_at, skip_draw
+  refresh_data = grid_data, defer_response, new_refresh_at, skip_draw
   await start.StartView(interaction).update(refresh_data)
 
 @discohook.button.new('Resize Canvas', emoji = '📐', custom_id = 'admin_resize:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
@@ -57,7 +57,7 @@ class SettingsView(discohook.View):
     )
     
     # get grid
-    grid, self.defer_response, new_refresh_at = await get_grid(self.interaction)
+    (grid, size), self.defer_response, new_refresh_at = await get_grid(self.interaction)
 
     # draw new canvas if refresh has happened from startview
     refresh_at = int(self.interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
@@ -67,7 +67,7 @@ class SettingsView(discohook.View):
     else:
 
       def blocking():
-        im = draw_map(grid, CANVAS_SIZE)
+        im = draw_map(grid, size)
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer
@@ -80,7 +80,7 @@ class SettingsView(discohook.View):
     dynamic_back_button = discohook.Button(
       back_button.label,
       emoji = back_button.emoji,
-      custom_id = '{}:{}'.format(back_button.custom_id, new_refresh_at)
+      custom_id = '{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), new_refresh_at)
     )
     self.add_buttons(dynamic_back_button, resize_button, cooldown_button, allowed_button)
   

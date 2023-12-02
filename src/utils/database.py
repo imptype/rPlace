@@ -31,13 +31,21 @@ class Database(Deta):
     query.equals('local_id', local_id)
     
     grid = {}
-    for record in (await self.pixels.fetch([query]))['items']:
-      y = record['key'].split(' ')[0] # incase local id exists, it just gets the Y value
-      y = int(''.join([y[:-1].lstrip('0'), y[-1]])) # convert 000, 020 to 0, 20
-      del record['key']
-      del record['local_id']
-      grid[y] = record
-    return grid
+    configs = {}
+    results = (await self.pixels.fetch([query]))['items']
+    if results:
+      # extract configs from first record [Y0]
+      if results[0]['key'].startswith('000'): # ensure it is Y 0
+        configs['size'] = results[0].pop('size', CANVAS_SIZE)
+        configs['cooldown'] = results[0].pop('cooldown', None)
+        configs['allowed'] = results[0].pop('allowed', None)
+      for record in results:
+        y = record['key'].split(' ')[0] # incase local id exists, it just gets the Y value
+        y = int(''.join([y[:-1].lstrip('0'), y[-1]])) # convert 000, 020 to 0, 20
+        del record['key']
+        del record['local_id']
+        grid[y] = record
+    return grid, configs
   
   async def create_row(self, local_id, y, x, tile):
     key = get_key(local_id, y)

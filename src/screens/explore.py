@@ -9,8 +9,6 @@ from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION
 from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username
 
-BORDER = CANVAS_SIZE - 1
-
 def get_values(interaction):
   return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
 
@@ -20,6 +18,8 @@ async def move(interaction, dx, dy):
   # apply step magnitude
   dx *= step
   dy *= step
+
+  border = 1
 
   # apply and fix if it goes beyond borders
   x += dx
@@ -91,6 +91,7 @@ async def color_button(interaction):
     color_modal.title,
     custom_id = '{}:{}'.format(color_modal.custom_id, get_values(interaction)[-1])    
   )
+  print('color int', modal.custom_id, print(interaction.id))
   modal.rows.append(color_field.to_dict())
   await interaction.response.send_modal(modal)
 
@@ -169,8 +170,8 @@ async def right_button(interaction):
   await move(interaction, 1, 0)
 
 jump_fields = [
-  discohook.TextInput('X', 'x', hint = 'A number in the range of 0-{}'.format(BORDER), min_length = 1, max_length = 3, required = True),
-  discohook.TextInput('Y', 'y', hint = 'A number in the range of 0-{}'.format(BORDER), min_length = 1, max_length = 3, required = True)
+  discohook.TextInput('X', 'x', hint = 'A number in the range of 0-{}', min_length = 1, max_length = 3, required = True),
+  discohook.TextInput('Y', 'y', hint = 'A number in the range of 0-{}', min_length = 1, max_length = 3, required = True)
 ]
 @discohook.modal.new('Jump Modal', fields = [], custom_id = 'jump_modal:v{}'.format(BOT_VERSION))
 async def jump_modal(interaction, x, y):
@@ -191,6 +192,7 @@ async def jump_modal(interaction, x, y):
   y = int(y)
 
   # validate in range, included because of the above, so this is rare
+  border = 1
   if not 0 <= x <= BORDER:
     return await interaction.response.send('X coordinate `{}` is out of range!'.format(x), ephemeral = True)
   elif not 0 <= y <= BORDER:
@@ -297,13 +299,13 @@ class ExploreView(discohook.View):
     timestamp = int(time.time() * 10 ** 7) # create new timestamp
       
     if refresh_data: # from button place
-      grid, self.defer_response, refresh_at, skip_draw = refresh_data # refresh comaprison is skipped, see below, because we just updated grid from place
+      (grid, configs), self.defer_response, refresh_at, skip_draw = refresh_data # refresh comaprison is skipped, see below, because we just updated grid from place
     else:
-      grid, self.defer_response, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
+      (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
       skip_draw = False
       if data: # only if data exists/clicked component on this view
         if old_refresh_at > refresh_at: # if old/second instance greater than current refresh, it means current/first instance is outdated
-          grid, self.defer_response, refresh_at, _local_id = await get_grid(self.interaction, force = True)
+          (grid, configs), self.defer_response, refresh_at, _local_id = await get_grid(self.interaction, force = True)
 
     pixel = grid.get(y, {}).get(str(x))
 
@@ -371,6 +373,8 @@ class ExploreView(discohook.View):
     if skip_draw: # saves redrawing pointlessly if it hasn't refreshed
       self.embed.set_image('attachment://map.png')
     else:
+      size = configs.get('size', CANVAS_SIZE)
+      border = size - 1
       # calculate pointer cursor
       radius = int(zoom/2)
       pointer = [radius] * 2
@@ -379,17 +383,17 @@ class ExploreView(discohook.View):
       if startx < 0:
         startx = 0
         pointer[0] = x
-      elif x + radius > BORDER:
-        startx = CANVAS_SIZE - zoom
-        pointer[0] = zoom - (CANVAS_SIZE - x)
+      elif x + radius > border:
+        startx = size - zoom
+        pointer[0] = zoom - (size - x)
 
       starty = y - radius
       if starty < 0:
         starty = 0
         pointer[1] = zoom - 1 - y
-      elif y + radius > BORDER:
-        starty = CANVAS_SIZE - zoom
-        pointer[1] = BORDER - y
+      elif y + radius > border:
+        starty = size - zoom
+        pointer[1] = border - y
 
       # draw canvas
       app = self.interaction.client
@@ -433,19 +437,19 @@ class ExploreView(discohook.View):
     dynamic_upleft_button = discohook.Button(
       emoji = upleft_button.emoji,
       custom_id = '{}:{}:{}:{}:{}:{}:{}:{}'.format(upleft_button.custom_id, x, y, zoom, step, color, refresh_at, timestamp),
-      disabled = not x or y == BORDER
+      disabled = not x or y == border
     )
     
     dynamic_up_button = discohook.Button(
       emoji = up_button.emoji,
       custom_id = up_button.custom_id + ':',
-      disabled = y == BORDER
+      disabled = y == border
     )
         
     dynamic_upright_button = discohook.Button(
       emoji = upright_button.emoji,
       custom_id = upright_button.custom_id + ':',
-      disabled = x == BORDER or y == BORDER
+      disabled = x == border or y == border
     )
         
     dynamic_left_button = discohook.Button(
@@ -457,7 +461,7 @@ class ExploreView(discohook.View):
     dynamic_right_button = discohook.Button(
       emoji = right_button.emoji,
       custom_id = right_button.custom_id + ':',
-      disabled = x == BORDER
+      disabled = x == border
     )
         
     dynamic_downleft_button = discohook.Button(
@@ -475,7 +479,7 @@ class ExploreView(discohook.View):
     dynamic_downright_button = discohook.Button(
       emoji = downright_button.emoji,
       custom_id = downright_button.custom_id + ':',
-      disabled = x == BORDER or not y
+      disabled = x == border or not y
     )
     
     dynmaic_place_button = discohook.Button(
@@ -511,7 +515,7 @@ class ExploreView(discohook.View):
     self.add_select(dynamic_zoom_select)
 
   async def update(self, data = None, refresh_data = None): # done in update function, saves pointer memory maybe
-    await self.setup(data, refresh_data) # place button gives refresh data with us or False if skip update for step/color
+    await self.setup(data, refresh_data) # refresh_data is any component here, excludes from startview
     if self.defer_response:
       await self.defer_response.edit(embed = self.embed, view = self)
     else:

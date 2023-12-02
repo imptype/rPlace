@@ -4,5 +4,7 @@ import discohook
 async def test_command(interaction):
   if interaction.author.id != '364487161250316289':
     return interaction.response.send('Denied')
-  await interaction.response.send('test!')
-  await interaction.client.db.take_snapshot()
+
+  print('1')
+  content = 'a' * 2001 # <- goes over the 2000 char limit in message content
+  await interaction.response.send(content)
