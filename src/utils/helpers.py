@@ -2,15 +2,24 @@
 Helper functions or code that is just odd.
 """
 
+import os
 import time
 import string
 import asyncio
+import hashlib
 import discohook
 import numpy as np
 from PIL import Image
 
 # space ' ' is reserved to be delimeter
 ASCII_CHARS = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
+
+CRYPT_CHARS = list(string.digits + string.ascii_letters + ':._') # all possible chars in custom id
+MAX_UNICODE = 1_114_112
+MAX_RANDOM = 4_294_967_296
+SALT = sum(map(ord, os.getenv('SALT'))) # int, used for unicode char text sum int
+SALT2 = os.getenv('SALT2') # str, used for hash sum
+SALT3 = sum(map(ord, os.getenv('SALT3'))) # int, used for position of text sum in text result
 
 def is_local(interaction):
   if interaction.kind == 2: # app command, just started
@@ -86,9 +95,9 @@ async def get_guild_data(interaction, guild_id):
 def power_sum(values, base, offset = 0):
   return sum(value * base ** (index + offset) for index, value in enumerate(values))
 
-def convert_text(text, chars):
-  base = len(chars) + 1
-  chars =  {char : index + 1 for index, char in enumerate(chars)}
+def convert_text(text):
+  base = len(string.digits) + 1
+  chars =  {char : index + 1 for index, char in enumerate(string.digits)}
   temp = []
   result = ''
   for char in text:
@@ -101,15 +110,59 @@ def convert_text(text, chars):
   result += ASCII_CHARS[power_sum(temp, base)]
   return result
     
-def revert_text(text, chars):
-  base = len(chars) + 1
-  chars = list(chars)
+def revert_text(text):
+  base = len(string.digits) + 1
+  chars = list(string.digits)
   result = ''
   for char in text:
     value = ASCII_CHARS.index(char)
     while value:
       result += chars[(value % base) - 1]
       value //= base
+  return result
+
+def encrypt_text(text):
+
+  text_sum = (sum(map(ord, text)) + SALT) % MAX_UNICODE
+  state = np.random.RandomState(int(hashlib.sha256((str(text_sum) + SALT2).encode()).hexdigest(), 16) % MAX_RANDOM)
+  char_map = dict(zip(CRYPT_CHARS, state.permutation(CRYPT_CHARS)))
+  text = ''.join(char_map[i] for i in text)
+
+  base = len(CRYPT_CHARS) + 1
+  chars =  {char : index + 1 for index, char in enumerate(CRYPT_CHARS)}
+  temp = []
+  result = ''
+  for char in text:
+    value = chars[char] # indexerror = missing that char in char set
+    if value * base ** len(temp) + power_sum(temp, base, 1) >= MAX_UNICODE:
+      result += chr(power_sum(temp, base))
+      temp = [value]
+    else:
+      temp.append(value)
+  result += chr(power_sum(temp, base))
+
+  sum_pos = (sum(map(ord, result)) + text_sum + SALT3) % (len(result) - 1)
+  result = result[:sum_pos] + chr(text_sum) + result[sum_pos:]
+
+  return result
+    
+def decrypt_text(text):
+
+  sum_pos = (sum(map(ord, text)) + SALT3) % (len(text) - 2)
+  state = np.random.RandomState(int(hashlib.sha256((str(ord(text[sum_pos])) + SALT2).encode()).hexdigest(), 16) % MAX_RANDOM)
+  text = text[:sum_pos] + text[sum_pos + 1:]
+  char_map = dict(zip(state.permutation(CRYPT_CHARS), CRYPT_CHARS))
+
+  base = len(CRYPT_CHARS) + 1
+  result = ''
+  for char in text:
+    value = ord(char)
+    while value:
+      result += CRYPT_CHARS[(value % base) - 1]
+      value //= base
+
+  result = ''.join(char_map[i] for i in result)
+      
   return result
 
 def draw_map(grid, size, startx = 0, starty = 0): # for sections, starty and startx is given
