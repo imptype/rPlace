@@ -1,4 +1,5 @@
 import io
+import time
 import asyncio
 import discohook
 from . import start
@@ -57,7 +58,8 @@ class SettingsView(discohook.View):
     )
     
     # get grid
-    (grid, size), self.defer_response, new_refresh_at = await get_grid(self.interaction)
+    (grid, configs), self.defer_response, new_refresh_at = await get_grid(self.interaction)
+    size = configs.get('size', CANVAS_SIZE)
 
     # draw new canvas if refresh has happened from startview
     refresh_at = int(self.interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])

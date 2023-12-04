@@ -14,11 +14,11 @@ async def back_button(interaction):
   # parse last refresh timestamp on canvas
   refresh_at = int(interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
   
-  grid, defer_response, new_refresh_at = await get_grid(interaction)
+  grid_data, defer_response, new_refresh_at = await get_grid(interaction)
 
   skip_draw = refresh_at >= new_refresh_at # didnt do an update = dont update image
   
-  refresh_data = grid, defer_response, new_refresh_at, skip_draw
+  refresh_data = grid_data, defer_response, new_refresh_at, skip_draw
   await start.StartView(interaction).update(refresh_data)
 
 # pagination is unused for now
@@ -73,7 +73,8 @@ class TopView(discohook.View):
         flag = 1
     
     # get grid
-    grid, self.defer_response, new_refresh_at = await get_grid(self.interaction)
+    (grid, configs), self.defer_response, new_refresh_at = await get_grid(self.interaction)
+    size = configs.get('size', CANVAS_SIZE)
     
     # benchmarks 
     # 100 0.0007
@@ -109,35 +110,37 @@ class TopView(discohook.View):
       locations = [] # up to 3
       oldest = [] # up to 3
       for y in grid:
-        for x in grid[y]:
-          if flag:
-            if flag == 2: # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
-              guilds[grid[y][x][4]] += 1
-            users[grid[y][x][3]] += 1
-          colors[grid[y][x][0]] += 1
-          if len(locations) != n:
-            locations.append((int(x), y, grid[y][x][2]))
-          elif grid[y][x][2] > locations[-1][2]: # bigger than smallest
-            p = n - 1 # insert position
-            for i, v in enumerate(locations[:-1]):
-              if grid[y][x][2] > v[2]:
-                p = i
-                break
-            locations.insert(p, (int(x), y, grid[y][x][2]))
-            del locations[-1]
-          if len(oldest) != n:
-            oldest.append((int(x), y, grid[y][x][1]))
-          elif grid[y][x][1] < oldest[-1][2]: # smaller than biggest
-            p = n - 1 # insert position
-            for i, v in enumerate(oldest[:-1]):
-              if grid[y][x][1] < v[2]:
-                p = i
-                break
-            oldest.insert(p, (int(x), y, grid[y][x][1]))
-            del oldest[-1]
+        if y < size: # within bounds of resized grid
+          for x in grid[y]:
+            if int(x) < size: # within bounds v2
+              if flag:
+                if flag == 2: # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
+                  guilds[grid[y][x][4]] += 1
+                users[grid[y][x][3]] += 1
+              colors[grid[y][x][0]] += 1
+              if len(locations) != n:
+                locations.append((int(x), y, grid[y][x][2]))
+              elif grid[y][x][2] > locations[-1][2]: # bigger than smallest
+                p = n - 1 # insert position
+                for i, v in enumerate(locations[:-1]):
+                  if grid[y][x][2] > v[2]:
+                    p = i
+                    break
+                locations.insert(p, (int(x), y, grid[y][x][2]))
+                del locations[-1]
+              if len(oldest) != n:
+                oldest.append((int(x), y, grid[y][x][1]))
+              elif grid[y][x][1] < oldest[-1][2]: # smaller than biggest
+                p = n - 1 # insert position
+                for i, v in enumerate(oldest[:-1]):
+                  if grid[y][x][1] < v[2]:
+                    p = i
+                    break
+                oldest.insert(p, (int(x), y, grid[y][x][1]))
+                del oldest[-1]
         
-      guilds = {revert_text(k, string.digits) : v for i, (k, v) in enumerate(sorted(guilds.items(), key = itemgetter(1), reverse = True)) if i < n}
-      users = {revert_text(k, string.digits) : v for i, (k, v) in enumerate(sorted(users.items(), key = itemgetter(1), reverse = True)) if i < n}
+      guilds = {revert_text(k) : v for i, (k, v) in enumerate(sorted(guilds.items(), key = itemgetter(1), reverse = True)) if i < n}
+      users = {revert_text(k) : v for i, (k, v) in enumerate(sorted(users.items(), key = itemgetter(1), reverse = True)) if i < n}
       colors = {k: v for i, (k, v) in enumerate(sorted(colors.items(), key = itemgetter(1), reverse = True)) if i < n}
       # print('end', time.time() - now)
 
@@ -186,7 +189,7 @@ class TopView(discohook.View):
             '`{}`'.format(guild_data[0]) if guild_data else '*`Unknown Server`*',
             guild_id,
             count, 
-            round(count / CANVAS_SIZE, 2)
+            round(count / size, 2)
           ) for i, (guild_id, (count, guild_data)) in enumerate(guilds.items())
         ))
         else:
@@ -201,7 +204,7 @@ class TopView(discohook.View):
             '`{}`'.format(user_data[0]) if user_data else '`*Unknown User*`',
             user_id,
             count, 
-            round(count / CANVAS_SIZE, 2)
+            round(count / size, 2)
           ) for i, (user_id, (count, user_data)) in enumerate(users.items())
         ))
       else:
@@ -212,7 +215,7 @@ class TopView(discohook.View):
     if colors:
       texts.append('\n'.join(
         '{} [`#{:06x}`](https://coolors.co/{:06x}) - {}x or {}%'.format(
-          get_rank(i), k, k, v, round(v / CANVAS_SIZE, 2)
+          get_rank(i), k, k, v, round(v / size, 2)
         ) for i, (k, v) in enumerate(colors.items())
       ))
     else:
@@ -255,7 +258,7 @@ class TopView(discohook.View):
     else:
 
       def blocking():
-        im = draw_map(grid, CANVAS_SIZE)
+        im = draw_map(grid, size)
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer
