@@ -23,19 +23,31 @@ micros:
       - name: LOG
       - name: DB
       - name: MAIN
-      - name: GLOBAL
-      - name: LOCAL
       - name: HOUR
       - name: DAY
       - name: WEEK
+      - id: 'snap'
+        name: 'Snapshot'
+        description: 'Takes global canvas snapshots'
+        trigger: 'schedule'
+        default_interval: '0 * * * *'
+  - name: serve
+    src: .
+    engine: python3.9
+    include: 
+      - server.py
+      - src/utils/
+    run: uvicorn main:app --log-level warning
+    dev: uvicorn main:app --reload
+    presets:
+      - name: START
+      - name: PASS
+      - name: DB
+      - name: GLOBAL
+      - name: LOCAL
     actions:
       - id: 'check'
         name: 'Check'
         description: 'Checks for logs'
         trigger: 'schedule'
         default_interval: '* * * * *'
-      - id: 'snap'
-        name: 'Snapshot'
-        description: 'Takes global canvas snapshots'
-        trigger: 'schedule'
-        default_interval: '0 * * * *'

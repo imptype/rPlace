@@ -11,22 +11,22 @@ if os.path.isfile(path): # <-- file won't exist in production
   os.environ['test'] = '1'
 
 # Validate keys
-keys = ('START', 'PASS', 'ID', 'KEY', 'TOKEN', 'LOG', 'DB', 'MAIN', 'HOUR', 'DAY', 'WEEK', 'SALT', 'SALT2', 'SALT3')
+keys = ('START', 'DB', 'GLOBAL', 'LOCAL')
 assert all(key in os.environ for key in keys), 'fail key'
 
 # Validate pass
 if os.getenv('START') != '123':
   exit()
 
-from src.bot import run
+from src.server import run
 
 if os.getenv('test'):
   print('''
-         ______  _                  _ 
-   _ __ / /  _ \| | __ _  ___ ___  | |
-  | '__/ /| |_) | |/ _` |/ __/ _ \ | |
-  | | / / |  __/| | (_| | (_|  __/ |_|
-  |_|/_/  |_|   |_|\__,_|\___\___| (_)
+         ______  _                   _ 
+   _ __ / /  _ \| | __ _  ___ ___ 2 | |
+  | '__/ /| |_) | |/ _` |/ __/ _ \  | |
+  | | / / |  __/| | (_| | (_|  __/  |_|
+  |_|/_/  |_|   |_|\__,_|\___\___|  (_)
   ''')
 
 # Run the bot

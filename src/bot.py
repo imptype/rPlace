@@ -19,7 +19,7 @@ from .screens.settings import SettingsView
 
 def run():
   
-  # Lifespan to attach extra .session and .db attributes, cancel + shutdown is for local testing
+  # Lifespan to attach .db attribute, cancel + shutdown is for local testing
   @contextlib.asynccontextmanager
   async def lifespan(app):
     async with database.Database(app, os.getenv('DB')) as app.db:
@@ -83,8 +83,6 @@ def run():
     return ':'.join([name, version])
 
   # Attach other webhooks
-  app.global_webhook = discohook.PartialWebhook.from_url(app, os.getenv('GLOBAL'))
-  app.local_webhook = discohook.PartialWebhook.from_url(app, os.getenv('LOCAL'))
   app.hour_webhook = discohook.PartialWebhook.from_url(app, os.getenv('HOUR'))
   app.day_webhook = discohook.PartialWebhook.from_url(app, os.getenv('DAY'))
   app.week_webhook = discohook.PartialWebhook.from_url(app, os.getenv('WEEK'))
@@ -177,6 +175,10 @@ def run():
           '{}: {}'.format(local_id, top_data)
           for local_id, top_data in app.tops.items()
         ])),
+        'Locks Cache:\n  {}'.format('  \n'.join([
+          '{}: {}'.format(local_id, lock)
+          for local_id, lock in app.locks.items()
+        ])),
         'Errors: {}'.format(json.dumps(app.errors, indent = 2)),
       ])
     )
@@ -186,9 +188,7 @@ def run():
   async def actions(request):
     data = await request.json()
     event = data['event']
-    if event['id'] == 'check':
-      await app.db.refresh_logs()
-    elif event['id'] == 'snap':
+    if event['id'] == 'snap':
       await app.db.take_snapshot()
     else:
       raise ValueError('Unhandled action id', data)
