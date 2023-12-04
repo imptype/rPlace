@@ -52,10 +52,25 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
   grid_data = cache.get(local_id) # grid {}, configs {}
   refresh_at = refresh_cache.get(local_id) # if grid exists, this will too
   defer_response = None
-  if force or grid_data is None or refresh_at / 10 ** 7 + app.constants.REFRESH_DEBOUNCE < time.time():
-    defer_response = await interaction.response.defer()
-    cache[local_id] = grid_data = await app.db.get_grid(local_id)
-    refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
+  now = time.time()
+  if force or grid_data is None or refresh_at / 10 ** 7 + app.constants.REFRESH_DEBOUNCE < now:
+
+    # before joining queue, check if fetch debounce expired before fetching
+    if not force or not grid_data or refresh_at / 10 ** 7 + app.constants.FETCH_DEBOUNCE < now:
+      defer_response = await interaction.response.defer()
+
+      lock = app.locks.get(local_id)
+      if not lock:
+        app.locks[local_id] = lock = asyncio.Lock()
+
+      await lock.acquire()
+      try: # while in queue, check if fetch debounce expired before fetching again
+        grid_data = cache.get(local_id)
+        if not grid_data or refresh_cache[local_id] / 10 ** 7 + app.constants.FETCH_DEBOUNCE < time.time(): 
+          cache[local_id] = grid_data = await app.db.get_grid(local_id)
+          refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
+      finally:
+        lock.release()
   
   if force: # need to return local id too for updating db
     return grid_data, defer_response, refresh_at, local_id
