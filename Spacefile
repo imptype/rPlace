@@ -26,6 +26,7 @@ micros:
       - name: HOUR
       - name: DAY
       - name: WEEK
+    actions:
       - id: 'snap'
         name: 'Snapshot'
         description: 'Takes global canvas snapshots'
@@ -40,6 +41,7 @@ micros:
     run: uvicorn main2:app --log-level warning
     dev: uvicorn main2:app --reload
     presets:
+      env:
       - name: START
       - name: PASS
       - name: DB
