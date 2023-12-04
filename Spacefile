@@ -35,8 +35,9 @@ micros:
   - name: serve
     src: .
     engine: python3.9
-    include: 
-      - server.py
+    include:
+      - main2.py
+      - src/server.py
       - src/utils/
     run: uvicorn main2:app --log-level warning
     dev: uvicorn main2:app --reload
