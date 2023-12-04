@@ -1,42 +1,47 @@
 import io
 import time
-import string
 import asyncio
 import discohook
 import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION
-from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username
+from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username, encrypt_text
 
 def get_values(interaction):
   return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
 
 async def move(interaction, dx, dy):
-  x, y, zoom, step, color, refresh_at, _timestamp = get_values(interaction)
+  x, y, zoom, step, color, osize, refresh_at, _timestamp = get_values(interaction)
+  ox, oy = x, y
 
   # apply step magnitude
   dx *= step
   dy *= step
 
-  border = 1
+  # get grid size to get border, we use get so we can do skip draw here if same position
+  grid_data, defer_response, new_refresh_at = await get_grid(interaction)
+  size = grid_data[0].get('size', CANVAS_SIZE)
+  border = size - 1
 
   # apply and fix if it goes beyond borders
   x += dx
   if x < 0:
     x = 0
-  elif x > BORDER:
-    x = BORDER
+  elif x > border:
+    x = border
 
   y += dy
   if y < 0:
     y = 0
-  elif y > BORDER:
-    y = BORDER
+  elif y > border:
+    y = border
 
   # reuse zoom, step and color in new data
   data = x, y, zoom, step, color, refresh_at
-  await ExploreView(interaction).update(data)
+  skip_draw = x == ox and y == oy and size == osize # still at same position of same map size, race condition, skip drawing
+  refresh_data = grid_data, defer_response, new_refresh_at, skip_draw
+  await ExploreView(interaction).update(data, refresh_data)
 
 @discohook.button.new(emoji = '↖️', custom_id = 'upleft:v{}'.format(BOT_VERSION))
 async def upleft_button(interaction):
@@ -56,7 +61,7 @@ async def color_modal(interaction, color):
   
   # validate timestamp
   try:
-    x, y, zoom, step, old_color, refresh_at, timestamp = get_values(interaction)
+    x, y, zoom, step, old_color, _size, refresh_at, timestamp = get_values(interaction)
     assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
@@ -74,16 +79,10 @@ async def color_modal(interaction, color):
   # validate new color
   if parsed_color == old_color:
     return await interaction.response.send('Color `{}` is already selected!'.format(color), ephemeral = True)
-  
-  # check whether to update canvas/send new image if refresh happened
-  grid, defer_response, new_refresh_at = await get_grid(interaction)
-
-  skip_draw = refresh_at >= new_refresh_at # didnt do an update, skip redrawing
-  refresh_data = grid, defer_response, new_refresh_at, skip_draw
 
   # all good, update view
-  data = x, y, zoom, step, parsed_color, new_refresh_at
-  await ExploreView(interaction).update(data, refresh_data)
+  data = x, y, zoom, step, parsed_color, refresh_at
+  await ExploreView(interaction).update(data)
 
 @discohook.button.new('Color: #000000', custom_id = 'color:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.grey)
 async def color_button(interaction):
@@ -91,7 +90,6 @@ async def color_button(interaction):
     color_modal.title,
     custom_id = '{}:{}'.format(color_modal.custom_id, get_values(interaction)[-1])    
   )
-  print('color int', modal.custom_id, print(interaction.id))
   modal.rows.append(color_field.to_dict())
   await interaction.response.send_modal(modal)
 
@@ -101,9 +99,15 @@ async def left_button(interaction):
 
 @discohook.button.new(emoji = '🆗', custom_id = 'place:v{}'.format(BOT_VERSION))
 async def place_button(interaction):
-  x, y, zoom, step, color, _refresh_at, _timestamp = get_values(interaction)
+  x, y, zoom, step, color, _size, _refresh_at, _timestamp = get_values(interaction)
   
-  grid, defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
+  (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
+
+  border = configs.get('size', CANVAS_SIZE) - 1
+
+  # if place is outside of border, just do move instead, race condition when u resize grid size
+  if x < 0 or x > border or y < 0 or y > border:
+    return await move(interaction, 0, 0)
 
   row = grid.get(y)
   x_key = str(x)
@@ -127,14 +131,14 @@ async def place_button(interaction):
   is_local_check = is_local(interaction)
   if is_local_check: # /local-canvas
     if interaction.guild_id: # /local-canvas in guild
-      tile = [color, timestamp, count, convert_text(interaction.author.id, string.digits)]
+      tile = [color, timestamp, count, convert_text(interaction.author.id)]
     else: # /local-canvas in DMs
       tile = [color, timestamp, count]
   else: # /canvas
     if interaction.guild_id: # /canvas in guild
-      tile = [color, timestamp, count, convert_text(interaction.author.id, string.digits), convert_text(interaction.guild_id, string.digits)]
+      tile = [color, timestamp, count, convert_text(interaction.author.id), convert_text(interaction.guild_id)]
     else: # /canvas in DMs
-      tile = [color, timestamp, count, convert_text(interaction.author.id, string.digits)]
+      tile = [color, timestamp, count, convert_text(interaction.author.id)]
 
   # update database with new tile or create row if it does not exist
   if row:
@@ -145,7 +149,7 @@ async def place_button(interaction):
   # update row/cache
   row[x_key] = tile
   data = x, y, zoom, step, color, refresh_at
-  refresh_data = grid, defer_response, refresh_at, False
+  refresh_data = (grid, configs), defer_response, refresh_at, False
   await ExploreView(interaction).update(data, refresh_data)
 
   # record log
@@ -178,8 +182,8 @@ async def jump_modal(interaction, x, y):
 
   # validate timestamp
   try:
-    old_x, old_y, zoom, step, color, refresh_at, timestamp = get_values(interaction)
-    assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
+    old_x, old_y, zoom, step, color, _size, refresh_at, timestamp = get_values(interaction) # message values
+    assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
 
@@ -190,30 +194,49 @@ async def jump_modal(interaction, x, y):
     return await interaction.response.send('Y coordinate `{}` is not a number!'.format(y), ephemeral = True)
   x = int(x)
   y = int(y)
-
-  # validate in range, included because of the above, so this is rare
-  border = 1
-  if not 0 <= x <= BORDER:
-    return await interaction.response.send('X coordinate `{}` is out of range!'.format(x), ephemeral = True)
-  elif not 0 <= y <= BORDER:
-    return await interaction.response.send('Y coordinate `{}` is out of range!'.format(y), ephemeral = True)
   
   # validate new x y coords
   if x == old_x and y == old_y:
     return await interaction.response.send('You are already at tile `({}, {})`!'.format(x, y), ephemeral = True)
 
+  (grid, configs), defer_response, new_refresh_at = await get_grid(interaction)
+  border = configs.get('size', CANVAS_SIZE) - 1
+  
+  # validate in range before using cached grid, included because of the above, so this is rare
+  if not 0 <= x <= border:
+    return await interaction.response.send('X coordinate `{}` is out of range!'.format(x), ephemeral = True)
+  elif not 0 <= y <= border:
+    return await interaction.response.send('Y coordinate `{}` is out of range!'.format(y), ephemeral = True)
+
+  # always draw because jumping to new x and y coordinate while not going out of border is ensured
+  skip_draw = False
+
   # all good, update view
   data = x, y, zoom, step, color, refresh_at
-  await ExploreView(interaction).update(data)
+  refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
+  await ExploreView(interaction).update(data, refresh_data)
 
 @discohook.button.new('Jump to (X, Y)', style = discohook.ButtonStyle.grey, custom_id = 'jump:v{}'.format(BOT_VERSION))
 async def jump_button(interaction):
+
+  # we use cached size here because modal response time is strictly 3 seconds
+  # and we partially validate size on modal callback and it's forced when you attempt to place anyway
+  _x, _y, _zoom, _step, _color, size, _refresh_at, timestamp = get_values(interaction)
+  border = size - 1
+
   modal = discohook.Modal(
     jump_modal.title,
-    custom_id = '{}:{}'.format(jump_modal.custom_id, get_values(interaction)[-1])    
+    custom_id = '{}:{}'.format(jump_modal.custom_id, timestamp)
   )
   for i in jump_fields:
-    modal.rows.append(i.to_dict())
+    modal.add_field(
+      i.label,
+      i.field_id,
+      hint = i.hint.format(border),
+      min_length = i.min_length,
+      max_length = i.max_length,
+      required = i.required
+    )
   await interaction.response.send_modal(modal)
 
 @discohook.button.new(emoji = '↙️', custom_id = 'downleft:v{}'.format(BOT_VERSION))
@@ -238,22 +261,18 @@ step_options = [
 ]
 @discohook.select.text(step_options, custom_id = 'step_select:v{}'.format(BOT_VERSION))
 async def step_select(interaction, values):
-  x, y, zoom, old_step, color, refresh_at, _timestamp = get_values(interaction)
+
+  # using this to validate wouldn't matter anyway
+  x, y, zoom, old_step, color, _size, refresh_at, _timestamp = get_values(interaction)
   step = int(values[0])
   
   # validate new step
   if step == old_step:
     return await interaction.response.send('Step size `{}` is already selected!'.format(step), ephemeral = True)
-  
-  # check whether to update canvas/send new image if refresh happened
-  grid, defer_response, new_refresh_at = await get_grid(interaction)
 
-  skip_draw = refresh_at >= new_refresh_at # didnt do an update, skip redrawing
-  refresh_data = grid, defer_response, new_refresh_at, skip_draw
-
-  # update view
-  data = x, y, zoom, step, color, new_refresh_at
-  await ExploreView(interaction).update(data, refresh_data)
+  # update view, refresh data is handled over there
+  data = x, y, zoom, step, color, refresh_at
+  await ExploreView(interaction).update(data)
 
 zoom_options = [
   discohook.SelectOption('{0}x{0}'.format(i), str(i))
@@ -261,16 +280,39 @@ zoom_options = [
 ]
 @discohook.select.text(zoom_options, placeholder = 'zoom_select', custom_id = 'zoom_select:v{}'.format(BOT_VERSION))
 async def zoom_select(interaction, values):
-  x, y, old_zoom, step, color, refresh_at, _timestamp = get_values(interaction)
+  x, y, old_zoom, step, color, _size, refresh_at, _timestamp = get_values(interaction)
   zoom = int(values[0])
   
   # validate new zoom
   if zoom == old_zoom:
     return await interaction.response.send('Zoom `{0}x{0}` is already selected!'.format(zoom), ephemeral = True)
+
+  # get cached grid size before we draw it to see if it goes beyond border
+  grid_data, defer_response, new_refresh_at = await get_grid(interaction)
+
+  border = grid_data[0].get('size', CANVAS_SIZE) - 1
+
+  # fix if it goes beyond new borders
+  if zoom > border: # drawing would be out of bounds otherwise
+    zoom = border
+  
+  if x < 0:
+    x = 0
+  elif x > border:
+    x = border
+
+  if y < 0:
+    y = 0
+  elif y > border:
+    y = border
+
+  # reuse zoom, step and color in new data
+  skip_draw = False # because we changed zoom size, skip draw is always false
+  refresh_data = grid_data, defer_response, new_refresh_at, skip_draw
   
   # update view
   data = x, y, zoom, step, color, refresh_at
-  await ExploreView(interaction).update(data)
+  await ExploreView(interaction).update(data, refresh_data)
 
 class ExploreView(discohook.View):
   def __init__(self, interaction = None): # View is persistent if args not given
@@ -298,14 +340,16 @@ class ExploreView(discohook.View):
       color = 0
     timestamp = int(time.time() * 10 ** 7) # create new timestamp
       
-    if refresh_data: # from button place
+    if refresh_data: # from button place, movement (border checks), jump modal (border checks), zoom select (update border checks before redraw)
       (grid, configs), self.defer_response, refresh_at, skip_draw = refresh_data # refresh comaprison is skipped, see below, because we just updated grid from place
     else:
       (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
       skip_draw = False
-      if data: # only if data exists/clicked component on this view
+      if data: # only if data exists/clicked component on this view, step select, color modal have a chance not to refresh
         if old_refresh_at > refresh_at: # if old/second instance greater than current refresh, it means current/first instance is outdated
           (grid, configs), self.defer_response, refresh_at, _local_id = await get_grid(self.interaction, force = True)
+        else:
+          skip_draw = True
 
     pixel = grid.get(y, {}).get(str(x))
 
@@ -318,13 +362,13 @@ class ExploreView(discohook.View):
 
       if self.interaction.guild_id: # not in dms
 
-        user_id = revert_text(pixel[3], string.digits)
+        user_id = revert_text(pixel[3])
         tasks = [get_user_data(self.interaction, user_id)]
 
         is_local_check = is_local(self.interaction)
         if not is_local_check: # not local canvas command
           if len(pixel) == 5: # from user DMs, 0 1 2 3, 4 guild id not included
-            guild_id = revert_text(pixel[4], string.digits)
+            guild_id = revert_text(pixel[4])
             tasks.append(get_guild_data(self.interaction, guild_id))
         
         results = await asyncio.gather(*tasks) # point is to save time by doing both requests at the same time
@@ -370,11 +414,12 @@ class ExploreView(discohook.View):
     if thumbnail_url:
       self.embed.set_thumbnail(thumbnail_url)
 
+    size = configs.get('size', CANVAS_SIZE)
+    border = size - 1
+
     if skip_draw: # saves redrawing pointlessly if it hasn't refreshed
       self.embed.set_image('attachment://map.png')
     else:
-      size = configs.get('size', CANVAS_SIZE)
-      border = size - 1
       # calculate pointer cursor
       radius = int(zoom/2)
       pointer = [radius] * 2
@@ -436,7 +481,7 @@ class ExploreView(discohook.View):
 
     dynamic_upleft_button = discohook.Button(
       emoji = upleft_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}'.format(upleft_button.custom_id, x, y, zoom, step, color, refresh_at, timestamp),
+      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(upleft_button.custom_id, x, y, zoom, step, color, size, refresh_at, timestamp),
       disabled = not x or y == border
     )
     

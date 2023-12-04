@@ -1,6 +1,5 @@
 import io
 import time
-import string
 import asyncio
 import datetime
 import discohook
@@ -27,7 +26,7 @@ class Database(Deta):
   async def get_grid(self, local_id):
     query = Query()
     if local_id:
-      local_id = convert_text(local_id, string.digits) # saves storage, ignore None
+      local_id = convert_text(local_id) # saves storage, ignore None
     query.equals('local_id', local_id)
     
     grid = {}
@@ -51,7 +50,7 @@ class Database(Deta):
     key = get_key(local_id, y)
     kwargs = {str(x) : tile}
     if local_id:
-      local_id = convert_text(local_id, string.digits) # saves storage
+      local_id = convert_text(local_id) # saves storage
     record = Record(
       key,
       local_id = local_id,

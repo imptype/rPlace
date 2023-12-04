@@ -11,5 +11,8 @@
   "LOCAL" : "",
   "HOUR" : "",
   "DAY" : "",
-  "WEEK" : ""
+  "WEEK" : "",
+  "SALT" : "",
+  "SALT2" : "",
+  "SALT3" : ""
 }

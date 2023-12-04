@@ -10,7 +10,7 @@ micros:
       - main.py
       - src/
     run: uvicorn main:app --log-level warning
-    dev: uvicorn main:app --reload --env-file .env
+    dev: uvicorn main:app --reload
     public_routes:
       - '/interactions'
     presets:

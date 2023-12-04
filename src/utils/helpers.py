@@ -15,11 +15,13 @@ from PIL import Image
 ASCII_CHARS = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
 
 CRYPT_CHARS = list(string.digits + string.ascii_letters + ':._') # all possible chars in custom id
-MAX_UNICODE = 1_114_112
-MAX_RANDOM = 4_294_967_296
-SALT = sum(map(ord, os.getenv('SALT'))) # int, used for unicode char text sum int
+MAX_SURROGATE = 2_048
+START_SURROGATE = 55_296 # 0xd800
+MAX_UNICODE = 1_114_112 - MAX_SURROGATE # 0x10ffff - unprintable/pointer chars
+MAX_RANDOM = 4_294_967_296 # 0x100000000
+SALT = int(''.join(map(lambda x: str(ord(x)), os.getenv('SALT')))) # int, used for unicode char text sum int
 SALT2 = os.getenv('SALT2') # str, used for hash sum
-SALT3 = sum(map(ord, os.getenv('SALT3'))) # int, used for position of text sum in text result
+SALT3 = int(''.join(map(lambda x: str(ord(x)), os.getenv('SALT3')))) # int, used for position of text sum in text result
 
 def is_local(interaction):
   if interaction.kind == 2: # app command, just started
@@ -95,6 +97,11 @@ async def get_guild_data(interaction, guild_id):
 def power_sum(values, base, offset = 0):
   return sum(value * base ** (index + offset) for index, value in enumerate(values))
 
+def validate_unicode(value, reverse = False): # 0xD000 to 0xDFFF are surrogates, unprintable/pointers
+  if value >= START_SURROGATE:
+    value -= MAX_SURROGATE * (2 * int(reverse) - 1) # 1 when true, -1 when false
+  return value
+
 def convert_text(text):
   base = len(string.digits) + 1
   chars =  {char : index + 1 for index, char in enumerate(string.digits)}
@@ -135,11 +142,11 @@ def encrypt_text(text):
   for char in text:
     value = chars[char] # indexerror = missing that char in char set
     if value * base ** len(temp) + power_sum(temp, base, 1) >= MAX_UNICODE:
-      result += chr(power_sum(temp, base))
+      result += chr(validate_unicode(power_sum(temp, base)))
       temp = [value]
     else:
       temp.append(value)
-  result += chr(power_sum(temp, base))
+  result += chr(validate_unicode(power_sum(temp, base)))
 
   sum_pos = (sum(map(ord, result)) + text_sum + SALT3) % (len(result) - 1)
   result = result[:sum_pos] + chr(text_sum) + result[sum_pos:]
@@ -156,7 +163,7 @@ def decrypt_text(text):
   base = len(CRYPT_CHARS) + 1
   result = ''
   for char in text:
-    value = ord(char)
+    value = validate_unicode(ord(char), True)
     while value:
       result += CRYPT_CHARS[(value % base) - 1]
       value //= base
@@ -212,9 +219,3 @@ def is_admin(interaction):
       and interaction.author.has_permission(discohook.Permission.administrator)
     ) or not interaction.guild_id
   )
-
-def encrypt_text(text):
-  pass
-
-def decrypt_text(text):
-  pass
