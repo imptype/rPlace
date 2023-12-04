@@ -44,7 +44,6 @@ micros:
     presets:
       env:
       - name: START
-      - name: PASS
       - name: DB
       - name: GLOBAL
       - name: LOCAL
