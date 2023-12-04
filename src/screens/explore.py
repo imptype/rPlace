@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION
-from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username, encrypt_text
+from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username#, encrypt_text
 
 def get_values(interaction):
   return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))

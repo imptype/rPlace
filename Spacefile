@@ -37,8 +37,8 @@ micros:
     include: 
       - server.py
       - src/utils/
-    run: uvicorn main:app --log-level warning
-    dev: uvicorn main:app --reload
+    run: uvicorn main2:app --log-level warning
+    dev: uvicorn main2:app --reload
     presets:
       - name: START
       - name: PASS

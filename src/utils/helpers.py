@@ -14,6 +14,7 @@ from PIL import Image
 # space ' ' is reserved to be delimeter
 ASCII_CHARS = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
 
+# encryption is unused, could use it for a future bot
 CRYPT_CHARS = list(string.digits + string.ascii_letters + ':._') # all possible chars in custom id
 MAX_SURROGATE = 2_048
 START_SURROGATE = 55_296 # 0xd800

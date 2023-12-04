@@ -67,9 +67,9 @@ def run():
   async def custom_id_parser(interaction, custom_id):
     await helpers.maintenance_check(interaction)
     await helpers.before_invoke_check(interaction)
-    if custom_id.startswith(':'):
-      custom_id = helpers.decrypt_text(custom_id[1:]) # ignore the first ':'
-      interaction.data['custom_id'] = custom_id # update modal custom_id
+    #if custom_id.startswith(':'): (unused)
+    #  custom_id = helpers.decrypt_text(custom_id[1:]) # ignore the first ':'
+    #  interaction.data['custom_id'] = custom_id # update modal custom_id
     name, version = custom_id.split(':')[:2]
     if version.removeprefix('v') != app.version:
       await interaction.response.send('Message is outdated, please run the command again. (`{}` vs `v{}`)'.format(version, app.version))
