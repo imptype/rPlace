@@ -20,9 +20,9 @@ MAX_SURROGATE = 2_048
 START_SURROGATE = 55_296 # 0xd800
 MAX_UNICODE = 1_114_112 - MAX_SURROGATE # 0x10ffff - unprintable/pointer chars
 MAX_RANDOM = 4_294_967_296 # 0x100000000
-SALT = int(''.join(map(lambda x: str(ord(x)), os.getenv('SALT')))) # int, used for unicode char text sum int
-SALT2 = os.getenv('SALT2') # str, used for hash sum
-SALT3 = int(''.join(map(lambda x: str(ord(x)), os.getenv('SALT3')))) # int, used for position of text sum in text result
+#SALT = int(''.join(map(lambda x: str(ord(x)), os.getenv('SALT')))) # int, used for unicode char text sum int
+#SALT2 = os.getenv('SALT2') # str, used for hash sum
+#SALT3 = int(''.join(map(lambda x: str(ord(x)), os.getenv('SALT3')))) # int, used for position of text sum in text result
 
 def is_local(interaction):
   if interaction.kind == 2: # app command, just started
