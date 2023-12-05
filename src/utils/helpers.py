@@ -218,8 +218,9 @@ class MaintenanceError(Exception):
 
 async def maintenance_check(interaction):
   if interaction.client.maintenance:
-    await interaction.response.send('The bot is currently in maintenace mode with the reason: `{}`. Try again later (after a few hours or a day) and you can check the progress by visiting the bot\'s support server.'.format(interaction.client.maintenance), ephemeral = True)
-    raise MaintenanceError(interaction)
+    if interaction.author.id != '364487161250316289' or interaction.client.maintenance.endswith('...'):
+      await interaction.response.send('The bot is currently in maintenance mode with the reason: `{}`. Try again later (after a few hours or a day) and you can check the progress by visiting the bot\'s support server.'.format(interaction.client.maintenance), ephemeral = True)
+      raise MaintenanceError(interaction)
   return True
 
 async def before_invoke_check(interaction):

@@ -8,8 +8,9 @@ micros:
     primary: true
     include:
       - main.py
+      - gunicorn.conf.py
       - src/
-    run: uvicorn main:app --log-level warning
+    run: gunicorn main:app
     dev: uvicorn main:app --reload
     public_routes:
       - '/interactions'

@@ -155,27 +155,27 @@ def run():
         '',
         'Test: {}'.format(app.test),
         '',
-        'Pixels Cache:\n  {}'.format('  \n'.join([
+        'Pixels Cache:\n  {}'.format('\n  '.join([
           '{}: {}'.format(local_id, grid) # len so readable
           for local_id, grid in app.pixels.items()
         ])),
-        'Users Cache:\n  {}'.format('  \n'.join([
+        'Users Cache:\n  {}'.format('\n  '.join([
           '{}: {}'.format(user_id, user_data)
           for user_id, user_data in app.users.items()
         ])),
-        'Guilds Cache:\n  {}'.format('  \n'.join([
+        'Guilds Cache:\n  {}'.format('\n  '.join([
           '{}: {}'.format(guild_id, guild_data)
           for guild_id, guild_data in app.guilds.items()
         ])),
-        'Refreshes Cache:\n  {}'.format('  \n'.join([
+        'Refreshes Cache:\n  {}'.format('\n  '.join([
           '{}: {}'.format(local_id, timestamp)
           for local_id, timestamp in app.refreshes.items()
         ])),
-        'Tops Cache:\n  {}'.format('  \n'.join([
+        'Tops Cache:\n  {}'.format('\n  '.join([
           '{}: {}'.format(local_id, top_data)
           for local_id, top_data in app.tops.items()
         ])),
-        'Locks Cache:\n  {}'.format('  \n'.join([
+        'Locks Cache:\n  {}'.format('\n  '.join([
           '{}: {}'.format(local_id, lock)
           for local_id, lock in app.locks.items()
         ])),

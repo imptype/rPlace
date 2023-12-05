@@ -1,4 +1,5 @@
 import os
+import aiohttp
 import asyncio
 import contextlib
 import discohook
@@ -8,16 +9,20 @@ from .utils import database
 
 def run():
 
-  # Lifespan to attach .db attribute, cancel + shutdown is for local testing
+  # Lifespan to attach .client.session and .db attribute, cancel + shutdown is for local testing
   @contextlib.asynccontextmanager
   async def lifespan(app):
-    async with database.Database(app, os.getenv('DB')) as app.db:
-      try:
-        yield
-      except asyncio.CancelledError:
-        print('Ignoring cancelled error. (CTRL+C)')
-      else:
-        print('Closed without errors.')
+    async with aiohttp.ClientSession() as session:
+      setattr(app, 'http', discohook.https.HTTPClient(None, None, session)) # for referencing in database.py
+      async with database.Database(app, os.getenv('DB')) as app.db:
+        try:
+          yield
+        except asyncio.CancelledError:
+          print('Ignoring cancelled error. (CTRL+C)')
+        else:
+          print('Closed without errors.')
+        finally:
+          await app.http.session.close() # close http session
 
   # Define app
   app = Starlette(lifespan = lifespan)
