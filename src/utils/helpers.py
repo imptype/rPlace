@@ -60,10 +60,6 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
     # before joining queue, check if fetch debounce expired before fetching
     if not force or not grid_data or refresh_at / 10 ** 7 + app.constants.FETCH_DEBOUNCE < now:
       defer_response = await interaction.response.defer()
-      
-      loop = asyncio.get_event_loop() # for other serverless
-      if app.http.session._loop != loop:
-        app.http.session = aiohttp.ClientSession('https://discord.com', loop = loop)
 
       lock = app.locks.get(local_id)
       if not lock:

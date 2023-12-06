@@ -16,12 +16,12 @@ def get_key(local_id, y):
   return key
 
 class Database(Deta):
-  def __init__(self, app, key):
-    super().__init__(key)
+  def __init__(self, app, key, loop = None):
+    super().__init__(key, loop = loop)
     self.app = app
-    self.pixels = self.base('pixels')
-    self.logs = self.base('logs')
-    self.config = self.base('config')
+    self.names = ['pixels', 'logs', 'config']
+    for name in self.names:
+      setattr(self, name, self.base(name))
 
   async def get_grid(self, local_id):
     query = Query()
