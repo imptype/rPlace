@@ -24,15 +24,18 @@ def run():
   # Lifespan to attach .db attribute, cancel + shutdown is for local testing
   @contextlib.asynccontextmanager
   async def lifespan(app):
-    async with database.Database(app, os.getenv('DB')) as app.db:
-      try:
-        yield
-      except asyncio.CancelledError:
-        print('Ignoring cancelled error. (CTRL+C)')
-      else:
-        print('Closed without errors.')
-      finally:
-        await app.http.session.close() # close bot session
+    async with aiohttp.ClientSession('https://discord.com', loop = asyncio.get_running_loop()) as session:
+      await app.http.session.close()
+      app.http.session = session # monkeypatch in async environment for gunicorn
+      async with database.Database(app, os.getenv('DB')) as app.db:
+        try:
+          yield
+        except asyncio.CancelledError:
+          print('Ignoring cancelled error. (CTRL+C)')
+        else:
+          print('Closed without errors.')
+        finally:
+          await app.http.session.close() # close bot session
 
   # Define the bot
   app = discohook.Client(
@@ -83,6 +86,17 @@ def run():
       await interaction.response.send('You do not have administrator permissions anymore so you cannot interact with this component.')
       return
     return ':'.join([name, version])
+
+  # Set before invoke (if lifespan didn't work on serverless instance)
+  @app.before_invoke()
+  async def before_invoke(interaction):
+    if interaction.kind != discohook.InteractionType.ping:
+      loop = asyncio.get_event_loop()
+      if app.http.session._loop != loop:
+        app.http.session = aiohttp.ClientSession('https://discord.com', loop = loop)
+      
+      if not hasattr(app, 'db'):
+        app.db = database.Database(app, os.getenv('DB'))
 
   # Attach other webhooks
   app.hour_webhook = discohook.PartialWebhook.from_url(app, os.getenv('HOUR'))
