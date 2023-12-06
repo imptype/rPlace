@@ -78,7 +78,7 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
         finally:
           lock.release()
 
-        return grid_data
+        return grid_data, refresh_at
 
       loop = asyncio.get_event_loop()
       defer_task = loop.create_task(defer())
@@ -94,7 +94,7 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
       if fetch_task in pending:
         await fetch_task # ensure this completes
 
-      grid_data = fetch_task.result()
+      grid_data, refresh_at = fetch_task.result()
   
   if force: # need to return local id too for updating db
     return grid_data, defer_response, refresh_at, local_id
