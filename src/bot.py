@@ -1,9 +1,11 @@
 import os
 import json
+import aiohttp
 import asyncio
 import datetime
 import traceback
 import contextlib
+import multiprocessing
 import discohook
 from starlette.responses import PlainTextResponse, Response
 from .utils import constants, database, helpers
@@ -22,15 +24,18 @@ def run():
   # Lifespan to attach .db attribute, cancel + shutdown is for local testing
   @contextlib.asynccontextmanager
   async def lifespan(app):
-    async with database.Database(app, os.getenv('DB')) as app.db:
-      try:
-        yield
-      except asyncio.CancelledError:
-        print('Ignoring cancelled error. (CTRL+C)')
-      else:
-        print('Closed without errors.')
-      finally:
-        await app.http.session.close() # close bot session
+    async with aiohttp.ClientSession('https://discord.com') as session:
+      await app.http.session.close()
+      app.http.session = session # monkeypatch in async environment
+      async with database.Database(app, os.getenv('DB')) as app.db:
+        try:
+          yield
+        except asyncio.CancelledError:
+          print('Ignoring cancelled error. (CTRL+C)')
+        else:
+          print('Closed without errors.')
+        finally:
+          await app.http.session.close() # close bot session
 
   # Define the bot
   app = discohook.Client(
@@ -152,6 +157,8 @@ def run():
     return PlainTextResponse(
       '\n'.join([
         'Started: {}'.format(app.started_at),
+        '',
+        'Workers: {}'.format(multiprocessing.cpu_count() * 2 + 1),
         '',
         'Test: {}'.format(app.test),
         '',

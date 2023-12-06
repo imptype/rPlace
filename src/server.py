@@ -12,7 +12,7 @@ def run():
   # Lifespan to attach .client.session and .db attribute, cancel + shutdown is for local testing
   @contextlib.asynccontextmanager
   async def lifespan(app):
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession('https://discord.com') as session:
       setattr(app, 'http', discohook.https.HTTPClient(None, None, session)) # for referencing in database.py
       async with database.Database(app, os.getenv('DB')) as app.db:
         try:
