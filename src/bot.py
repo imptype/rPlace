@@ -24,19 +24,15 @@ def run():
   # Lifespan to attach .db attribute, cancel + shutdown is for local testing
   @contextlib.asynccontextmanager
   async def lifespan(app):
-    async with aiohttp.ClientSession('https://discord.com', loop = asyncio.get_running_loop()) as session:
-      await app.http.session.close()
-      app.http.session = session # monkeypatch in async environment
-      print(session._loop == asyncio.get_running_loop())
-      async with database.Database(app, os.getenv('DB')) as app.db:
-        try:
-          yield
-        except asyncio.CancelledError:
-          print('Ignoring cancelled error. (CTRL+C)')
-        else:
-          print('Closed without errors.')
-        finally:
-          await app.http.session.close() # close bot session
+    async with database.Database(app, os.getenv('DB')) as app.db:
+      try:
+        yield
+      except asyncio.CancelledError:
+        print('Ignoring cancelled error. (CTRL+C)')
+      else:
+        print('Closed without errors.')
+      finally:
+        await app.http.session.close() # close bot session
 
   # Define the bot
   app = discohook.Client(
