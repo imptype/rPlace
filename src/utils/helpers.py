@@ -62,7 +62,7 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
       print('here')
       
       async def defer(): # avoid deferring if we are fast
-        await asyncio.sleep(2 - (time.time() - interaction.created_at) # 2 seconds passed and still fetching = must defer
+        await asyncio.sleep(2 - (time.time() - interaction.created_at)) # 2 seconds passed and still fetching = must defer
         return await interaction.response.defer()
 
       async def fetch():
