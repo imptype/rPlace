@@ -92,11 +92,11 @@ def run():
   async def before_invoke(interaction):
     if interaction.kind != discohook.InteractionType.ping:
       loop = asyncio.get_event_loop()
-      if app.http.session._loop != loop:
-        app.http.session = aiohttp.ClientSession('https://discord.com', loop = loop)
+      #if app.http.session._loop != loop:
+      app.http.session = aiohttp.ClientSession('https://discord.com', loop = loop)
       
-      if not hasattr(app, 'db'): # lifespan did not work
-        app.db = database.Database(app, os.getenv('DB'), loop = loop)
+      #if not hasattr(app, 'db'): # lifespan did not work
+      app.db = database.Database(app, os.getenv('DB'), loop = loop)
 
   # Attach other webhooks
   app.hour_webhook = discohook.PartialWebhook.from_url(app, os.getenv('HOUR'))

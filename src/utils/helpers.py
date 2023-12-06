@@ -145,49 +145,49 @@ def revert_text(text):
       value //= base
   return result
 
-def encrypt_text(text):
+# def encrypt_text(text):
 
-  text_sum = (sum(map(ord, text)) + SALT) % MAX_UNICODE
-  state = np.random.RandomState(int(hashlib.sha256((str(text_sum) + SALT2).encode()).hexdigest(), 16) % MAX_RANDOM)
-  char_map = dict(zip(CRYPT_CHARS, state.permutation(CRYPT_CHARS)))
-  text = ''.join(char_map[i] for i in text)
+#   text_sum = (sum(map(ord, text)) + SALT) % MAX_UNICODE
+#   state = np.random.RandomState(int(hashlib.sha256((str(text_sum) + SALT2).encode()).hexdigest(), 16) % MAX_RANDOM)
+#   char_map = dict(zip(CRYPT_CHARS, state.permutation(CRYPT_CHARS)))
+#   text = ''.join(char_map[i] for i in text)
 
-  base = len(CRYPT_CHARS) + 1
-  chars =  {char : index + 1 for index, char in enumerate(CRYPT_CHARS)}
-  temp = []
-  result = ''
-  for char in text:
-    value = chars[char] # indexerror = missing that char in char set
-    if value * base ** len(temp) + power_sum(temp, base, 1) >= MAX_UNICODE:
-      result += chr(validate_unicode(power_sum(temp, base)))
-      temp = [value]
-    else:
-      temp.append(value)
-  result += chr(validate_unicode(power_sum(temp, base)))
+#   base = len(CRYPT_CHARS) + 1
+#   chars =  {char : index + 1 for index, char in enumerate(CRYPT_CHARS)}
+#   temp = []
+#   result = ''
+#   for char in text:
+#     value = chars[char] # indexerror = missing that char in char set
+#     if value * base ** len(temp) + power_sum(temp, base, 1) >= MAX_UNICODE:
+#       result += chr(validate_unicode(power_sum(temp, base)))
+#       temp = [value]
+#     else:
+#       temp.append(value)
+#   result += chr(validate_unicode(power_sum(temp, base)))
 
-  sum_pos = (sum(map(ord, result)) + text_sum + SALT3) % (len(result) - 1)
-  result = result[:sum_pos] + chr(text_sum) + result[sum_pos:]
+#   sum_pos = (sum(map(ord, result)) + text_sum + SALT3) % (len(result) - 1)
+#   result = result[:sum_pos] + chr(text_sum) + result[sum_pos:]
 
-  return result
+#   return result
     
-def decrypt_text(text):
+# def decrypt_text(text):
 
-  sum_pos = (sum(map(ord, text)) + SALT3) % (len(text) - 2)
-  state = np.random.RandomState(int(hashlib.sha256((str(ord(text[sum_pos])) + SALT2).encode()).hexdigest(), 16) % MAX_RANDOM)
-  text = text[:sum_pos] + text[sum_pos + 1:]
-  char_map = dict(zip(state.permutation(CRYPT_CHARS), CRYPT_CHARS))
+#   sum_pos = (sum(map(ord, text)) + SALT3) % (len(text) - 2)
+#   state = np.random.RandomState(int(hashlib.sha256((str(ord(text[sum_pos])) + SALT2).encode()).hexdigest(), 16) % MAX_RANDOM)
+#   text = text[:sum_pos] + text[sum_pos + 1:]
+#   char_map = dict(zip(state.permutation(CRYPT_CHARS), CRYPT_CHARS))
 
-  base = len(CRYPT_CHARS) + 1
-  result = ''
-  for char in text:
-    value = validate_unicode(ord(char), True)
-    while value:
-      result += CRYPT_CHARS[(value % base) - 1]
-      value //= base
+#   base = len(CRYPT_CHARS) + 1
+#   result = ''
+#   for char in text:
+#     value = validate_unicode(ord(char), True)
+#     while value:
+#       result += CRYPT_CHARS[(value % base) - 1]
+#       value //= base
 
-  result = ''.join(char_map[i] for i in result)
+#   result = ''.join(char_map[i] for i in result)
       
-  return result
+#   return result
 
 def draw_map(grid, size, startx = 0, starty = 0): # for sections, starty and startx is given
   a = np.empty((size, size, 3), np.uint8)
