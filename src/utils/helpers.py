@@ -59,20 +59,42 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
 
     # before joining queue, check if fetch debounce expired before fetching
     if not force or not grid_data or refresh_at / 10 ** 7 + app.constants.FETCH_DEBOUNCE < now:
-      defer_response = await interaction.response.defer() # on other serverless it bugs out due to new_event_loop()
+      print('here')
+      
+      async def defer(): # avoid deferring if we are fast
+        await asyncio.sleep(2) # 2 seconds passed and still fetching = must defer
+        return await interaction.response.defer()
 
-      lock = app.locks.get(local_id)
-      if not lock:
-        app.locks[local_id] = lock = asyncio.Lock()
+      async def fetch():
+        lock = app.locks.get(local_id)
+        if not lock:
+          app.locks[local_id] = lock = asyncio.Lock()
 
-      await lock.acquire()
-      try: # while in queue, check if fetch debounce expired before fetching again
-        grid_data = cache.get(local_id)
-        if not grid_data or refresh_cache[local_id] / 10 ** 7 + app.constants.FETCH_DEBOUNCE < time.time(): 
-          cache[local_id] = grid_data = await app.db.get_grid(local_id)
-          refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
-      finally:
-        lock.release()
+        await lock.acquire()
+        try: # while in queue, check if fetch debounce expired before fetching again
+          grid_data = cache.get(local_id)
+          if not grid_data or refresh_cache[local_id] / 10 ** 7 + app.constants.FETCH_DEBOUNCE < time.time(): 
+            cache[local_id] = grid_data = await app.db.get_grid(local_id)
+            refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
+        finally:
+          lock.release()
+
+        return grid_data
+
+      defer_task = asyncio.create_task(defer())
+      fetch_task = asyncio.create_task(fetch())
+
+      done, pending = await asyncio.wait((defer_task, fetch_task), return_when = asyncio.FIRST_COMPLETED)
+      
+      if defer_task in done: # 2 seconds passed
+        defer_response = defer_task.result()
+      else:
+        defer_task.cancel()
+      
+      if fetch_task in pending:
+        await fetch_task # ensure this completes
+
+      grid_data = fetch_task.result()
   
   if force: # need to return local id too for updating db
     return grid_data, defer_response, refresh_at, local_id

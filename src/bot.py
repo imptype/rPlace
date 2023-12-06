@@ -89,7 +89,7 @@ def run():
 
   # Set before invoke (if lifespan didn't work on serverless instance)
   @app.before_invoke()
-  async def before_invoke(interaction):
+  async def before_invoke(interaction): # force new sessions every request is the only way to fix it atm
     if interaction.kind != discohook.InteractionType.ping:
       loop = asyncio.get_event_loop()
       #if app.http.session._loop != loop:
