@@ -1,0 +1,5 @@
+Currently the bot commands itself is hosted on Vercel because deta.space has cold start issues > 3 seconds.
+- Downside of using Vercel is it inefficiently recreates event loop every request.
+- Access to deta base takes longer.
+
+Checking/cron jobs are handled by deta.space because latency doesn't matter over there.

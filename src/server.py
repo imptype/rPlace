@@ -30,6 +30,9 @@ def run():
   # Attach webhooks
   app.global_webhook = discohook.PartialWebhook.from_url(app, os.getenv('GLOBAL'))
   app.local_webhook = discohook.PartialWebhook.from_url(app, os.getenv('LOCAL'))
+  app.hour_webhook = discohook.PartialWebhook.from_url(app, os.getenv('HOUR'))
+  app.day_webhook = discohook.PartialWebhook.from_url(app, os.getenv('DAY'))
+  app.week_webhook = discohook.PartialWebhook.from_url(app, os.getenv('WEEK'))
 
   # Actions handler
   @app.route('/__space/v0/actions', methods = ['POST'])
@@ -38,6 +41,8 @@ def run():
     event = data['event']
     if event['id'] == 'check':
       await app.db.refresh_logs()
+    elif event['id'] == 'snap':
+      await app.db.take_snapshot()
     else:
       raise ValueError('Unhandled action id', data)
     return Response()

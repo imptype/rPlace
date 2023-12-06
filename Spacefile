@@ -2,37 +2,28 @@
 v: 0
 icon: src/assets/icon.png
 micros:
-  - name: rPlace
-    src: .
-    engine: python3.9
-    primary: true
-    include:
-      - main.py
-      - gunicorn.conf.py
-      - src/
-    run: gunicorn main:app
-    dev: uvicorn main:app --reload
-    public_routes:
-      - '/interactions'
-    presets:
-      env:
-      - name: START
-      - name: PASS
-      - name: ID
-      - name: KEY
-      - name: TOKEN
-      - name: LOG
-      - name: DB
-      - name: MAIN
-      - name: HOUR
-      - name: DAY
-      - name: WEEK
-    actions:
-      - id: 'snap'
-        name: 'Snapshot'
-        description: 'Takes global canvas snapshots'
-        trigger: 'schedule'
-        default_interval: '0 * * * *'
+#  - name: rPlace
+#    src: .
+#    engine: python3.9
+#    primary: true
+#    include:
+#      - main.py
+#      - gunicorn.conf.py
+#      - src/
+#    run: gunicorn main:app
+#    dev: uvicorn main:app --reload
+#    public_routes:
+#      - '/interactions'
+#    presets:
+#      env:
+#      - name: START
+#      - name: PASS
+#      - name: ID
+#      - name: KEY
+#      - name: TOKEN
+#      - name: LOG
+#      - name: DB
+#      - name: MAIN
   - name: serve
     src: .
     engine: python3.9
@@ -48,9 +39,17 @@ micros:
       - name: DB
       - name: GLOBAL
       - name: LOCAL
+      - name: HOUR
+      - name: DAY
+      - name: WEEK
     actions:
       - id: 'check'
         name: 'Check'
         description: 'Checks for logs'
         trigger: 'schedule'
         default_interval: '* * * * *'
+      - id: 'snap'
+        name: 'Snapshot'
+        description: 'Takes global canvas snapshots'
+        trigger: 'schedule'
+        default_interval: '0 * * * *'

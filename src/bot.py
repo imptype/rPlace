@@ -98,11 +98,6 @@ def run():
       #if not hasattr(app, 'db'): # lifespan did not work
       app.db = database.Database(app, os.getenv('DB'), loop = loop)
 
-  # Attach other webhooks
-  app.hour_webhook = discohook.PartialWebhook.from_url(app, os.getenv('HOUR'))
-  app.day_webhook = discohook.PartialWebhook.from_url(app, os.getenv('DAY'))
-  app.week_webhook = discohook.PartialWebhook.from_url(app, os.getenv('WEEK'))
-
   # Attach helpers and constants, might be helpful
   app.constants = constants
   app.helpers = helpers
@@ -200,17 +195,6 @@ def run():
         'Errors: {}'.format(json.dumps(app.errors, indent = 2)),
       ])
     )
-
-  # Actions handler
-  @app.route('/__space/v0/actions', methods = ['POST'])
-  async def actions(request):
-    data = await request.json()
-    event = data['event']
-    if event['id'] == 'snap':
-      await app.db.take_snapshot()
-    else:
-      raise ValueError('Unhandled action id', data)
-    return Response()
 
   # Return app object
   return app

@@ -59,7 +59,7 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
 
     # before joining queue, check if fetch debounce expired before fetching
     if not force or not grid_data or refresh_at / 10 ** 7 + app.constants.FETCH_DEBOUNCE < now:
-      #defer_response = await interaction.response.defer() # on other serverless it bugs out due to new_event_loop()
+      defer_response = await interaction.response.defer() # on other serverless it bugs out due to new_event_loop()
 
       lock = app.locks.get(local_id)
       if not lock:
