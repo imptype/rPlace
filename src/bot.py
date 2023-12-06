@@ -159,7 +159,7 @@ def run():
         'Started: {}'.format(app.started_at),
         '',
         'Workers: {}'.format(multiprocessing.cpu_count() * 2 + 1),
-        '',
+        'Extra: {}'.format(app.http.session._loop == asyncio.get_running_loop()),
         'Test: {}'.format(app.test),
         '',
         'Pixels Cache:\n  {}'.format('\n  '.join([
