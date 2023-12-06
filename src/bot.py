@@ -24,9 +24,10 @@ def run():
   # Lifespan to attach .db attribute, cancel + shutdown is for local testing
   @contextlib.asynccontextmanager
   async def lifespan(app):
-    async with aiohttp.ClientSession('https://discord.com') as session:
+    async with aiohttp.ClientSession('https://discord.com', loop = asyncio.get_running_loop()) as session:
       await app.http.session.close()
       app.http.session = session # monkeypatch in async environment
+      print(session._loop == asyncio.get_running_loop())
       async with database.Database(app, os.getenv('DB')) as app.db:
         try:
           yield
