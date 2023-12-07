@@ -57,14 +57,14 @@ def run():
       return print('Ignoring component not found', str(interaction.author), interaction.data)
     elif isinstance(error, helpers.MaintenanceError):
       return print('Ignoring maintenance failure', error.message)
-    if interaction.responded:
-      await interaction.response.followup('Sorry, an error has occured (after responding).')
-    else:
-      await interaction.response.send('Sorry, an error has occured.')
     trace = tuple(traceback.TracebackException.from_exception(error).format())
     app.errors.append(trace)
     text = ''.join(trace)
     print(text)
+    if interaction.responded:
+      await interaction.response.followup('Sorry, an error has occured (after responding).')
+    else:
+      await interaction.response.send('Sorry, an error has occured.')
     await error_log_webhook.send(text[:2000])
 
   # Set custom ID parser
