@@ -23,7 +23,7 @@ class Database(Deta):
     for name in self.names:
       setattr(self, name, self.base(name))
 
-  async def get_grid(self, local_id):
+  async def get_grid(self, local_id = None):
     query = Query()
     if local_id:
       local_id = convert_text(local_id) # saves storage, ignore None
@@ -147,7 +147,7 @@ class Database(Deta):
     await asyncio.gather(self.handle_logs(), self.handle_logs(True)) # global and local separately
 
   async def take_snapshot(self):
-    grid, _defer_response, refresh_at = await get_grid(self.app)
+    (grid, _configs) = await self.get_grid()
 
     def blocking(): # saving is also stuffed here due to blocking
       im = draw_map(grid, CANVAS_SIZE)
@@ -159,15 +159,15 @@ class Database(Deta):
     buffer = await asyncio.to_thread(blocking)
 
     # args
-    refresh_at = int(refresh_at / 10 ** 7) # fix ords
-    content = '<t:{}:R>'.format(refresh_at)
+    now = int(time.time())
+    content = '<t:{}:R>'.format(now)
     image_file = discohook.File('map.png', content = buffer.getvalue())
 
     # send to hourly
     await (await self.app.hour_webhook.send(content, file = image_file, wait = True)).crosspost()
 
     # check if new day or week
-    d = datetime.datetime.fromtimestamp(refresh_at)
+    d = datetime.datetime.fromtimestamp(now)
     if 17 < d.hour < 22: # saves unnecessary db reads, between 6:00PM-10:00PM GMT
 
       query = Query()
