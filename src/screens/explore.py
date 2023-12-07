@@ -295,6 +295,8 @@ async def zoom_select(interaction, values):
   # fix if it goes beyond new borders
   if zoom > border: # drawing would be out of bounds otherwise
     zoom = border
+    if not zoom % 2: # not an odd number
+      zoom -= 1 # ensure odd so cursor placement is accurate
   
   if x < 0:
     x = 0

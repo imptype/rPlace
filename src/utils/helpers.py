@@ -11,6 +11,7 @@ import hashlib
 import discohook
 import numpy as np
 from PIL import Image
+from starlette.applications import Starlette
 
 # space ' ' is reserved to be delimeter
 ASCII_CHARS = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
@@ -41,7 +42,7 @@ def get_local_id(interaction):
 
 async def get_grid(interaction, force = False): # interaction Client = taking snapshot
 
-  if isinstance(interaction, discohook.Client):
+  if isinstance(interaction, Starlette): # discohook or starlette
     app = interaction
     local_id = None
   else:

@@ -40,26 +40,29 @@ class SettingsView(discohook.View):
       self.add_buttons(back_button, resize_button, cooldown_button, allowed_button)
 
   async def setup(self): # ainit
+
+    # get grid
+    (grid, configs), self.defer_response, new_refresh_at = await get_grid(self.interaction)
+    size = configs.get('size', CANVAS_SIZE)
+    cooldown = configs.get('cooldown')
+    allowed = configs.get('allowed')
+
     self.embed = discohook.Embed(
       'r/Place Local Settings',
       description = '\n'.join([
         'This is a __**work in progress**__. In the near future, you\'ll be able to do the following to configure your local canvas:',
         '',
-        '**[1] Resizing Canvas**',
+        '**[1] Resizing Canvas (Current Size: `{}x{}`)**'.format(size),
         'Resizes the local canvas anywhere between 3x3 to 1000x1000. Pixel data outside of the new resized region will persist and will return if you decide to resize back.',
         '',
-        '**[2] Setting a cooldown**',
+        '**[2] Setting a cooldown (Current: `{}` seconds`)**'.format(cooldown if cooldown else 0),
         'Set a cooldown between None to 24 hours. A cooldown means if someone placed a pixel, they will have to wait that amount of time before they can place another one again.',
         '',
-        '**[3] Set allowed/whitelisted role**',
+        '**[3] Set allowed/whitelisted role (Current: `{}`)**'.format(allowed),
         'If you set this, only people with this role can actually place pixels. This is useful if you want people to be able to spectate but not be able to overwrite pixels.'
       ]),
       color = COLOR_RED
     )
-    
-    # get grid
-    (grid, configs), self.defer_response, new_refresh_at = await get_grid(self.interaction)
-    size = configs.get('size', CANVAS_SIZE)
 
     # draw new canvas if refresh has happened from startview
     refresh_at = int(self.interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
