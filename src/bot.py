@@ -48,7 +48,7 @@ def run():
 
   # Attach error handler
   app.errors = []
-  error_log_webhook = discohook.PartialWebhook.from_url(app, os.getenv('LOG'))
+  app.error_webhook = discohook.PartialWebhook.from_url(app, os.getenv('LOG'))
   @app.on_interaction_error()
   async def on_error(interaction, error):
     app.errors.append(str(error))
@@ -81,7 +81,7 @@ def run():
       respond = interaction.response.followup('Sorry, an error has occured (after responding).')
     else:
       respond = interaction.response.send('Sorry, an error has occured.')
-    log = error_log_webhook.send('Test' if app.test else None, file = discohook.File('error.txt', content = text.encode()))
+    log = app.error_webhook.send('Test' if app.test else None, file = discohook.File('error.txt', content = text.encode()))
     await asyncio.gather(respond, log)
 
   # Set custom ID parser
