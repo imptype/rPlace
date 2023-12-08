@@ -18,6 +18,8 @@ async def top_button(interaction):
 
 @discohook.button.new('Settings [Admin]', emoji = '🛠️', custom_id = 'settings:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
 async def settings_button(interaction):
+  if interaction.author.id != '364487161250316289':
+    return await interaction.response.send('Work in progress.')
   await SettingsView(interaction).update()
 
 @discohook.button.new(emoji = '🔄', custom_id = 'refresh:v{}'.format(BOT_VERSION))

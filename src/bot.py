@@ -51,21 +51,38 @@ def run():
   error_log_webhook = discohook.PartialWebhook.from_url(app, os.getenv('LOG'))
   @app.on_interaction_error()
   async def on_error(interaction, error):
+    app.errors.append(str(error))
+
+    # Ignore
     if isinstance(error, discohook.errors.CheckFailure):
       return print('Ignoring check failure', str(interaction.author), interaction.data['custom_id'].split(':')[0])
     elif isinstance(error, NotImplementedError):
       return print('Ignoring component not found', str(interaction.author), interaction.data)
     elif isinstance(error, helpers.MaintenanceError):
       return print('Ignoring maintenance failure', error.message)
+      
+    # Build error text with local variable values
     trace = tuple(traceback.TracebackException.from_exception(error).format())
-    app.errors.append(trace)
-    text = ''.join(trace)
+    text = trace[0].rstrip() + '\n'
+    frame = error.__traceback__.tb_next
+    for i in trace[1:-2]:
+      text += i # File ...
+      for i, (k, v) in enumerate(frame.tb_frame.f_locals.items()):
+        text += '\t{} = {}\n'.format(k, helpers.short_text(repr(v), 10000))
+        if i > 100:
+          text += '\t{} skipped.'.format(len(frame.tb_frame.f_locals) - 100)
+          break
+      frame = frame.tb_next
+    text += ''.join(trace[-2:])
     print(text)
+
+    # Respond and log
     if interaction.responded:
-      await interaction.response.followup('Sorry, an error has occured (after responding).')
+      respond = interaction.response.followup('Sorry, an error has occured (after responding).')
     else:
-      await interaction.response.send('Sorry, an error has occured.')
-    await error_log_webhook.send(text[:2000])
+      respond = interaction.response.send('Sorry, an error has occured.')
+    log = error_log_webhook.send('Test' if app.test else None, file = discohook.File('error.txt', content = text.encode()))
+    await asyncio.gather(respond, log)
 
   # Set custom ID parser
   @app.custom_id_parser()

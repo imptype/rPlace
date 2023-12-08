@@ -259,3 +259,15 @@ def is_admin(interaction):
       and interaction.author.has_permission(discohook.Permission.administrator)
     ) or not interaction.guild_id
   )
+
+def short_text(text, max_characters, shortest = False):
+  a = text
+  n = max_characters
+  if shortest:
+    b = '...'
+  else:
+    b = '\n... ({0} chars left)'
+  if a and n < len(a):
+    b = b.format(len(a)-n)
+    a = a[:n-len(b)] + b
+  return a
