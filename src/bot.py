@@ -17,7 +17,7 @@ from .cogs.test import test_command
 from .screens.start import StartView
 from .screens.explore import ExploreView, color_modal, jump_modal
 from .screens.top import TopView
-from .screens.settings import SettingsView
+from .screens.settings import SettingsView, resize_modal
 
 def run():
   
@@ -90,7 +90,7 @@ def run():
   # Set before invoke (if lifespan didn't work on serverless instance)
   @app.before_invoke()
   async def before_invoke(interaction): # force new sessions every request is the only way to fix it atm
-    if interaction.kind != discohook.InteractionType.ping:
+    if interaction.kind != discohook.InteractionType.ping and not app.test:
       loop = asyncio.get_event_loop()
       #if app.http.session._loop != loop:
       app.http.session = aiohttp.ClientSession('https://discord.com', loop = loop)
@@ -140,6 +140,7 @@ def run():
   app.load_components(SettingsView())
   app.active_components[color_modal.custom_id] = color_modal
   app.active_components[jump_modal.custom_id] = jump_modal
+  app.active_components[resize_modal.custom_id] = resize_modal
 
   # Add commands
   commands = (

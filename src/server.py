@@ -13,7 +13,7 @@ def run():
   @contextlib.asynccontextmanager
   async def lifespan(app):
     async with aiohttp.ClientSession('https://discord.com') as session:
-      setattr(app, 'http', discohook.https.HTTPClient(None, None, session)) # for referencing in database.py
+      setattr(app, 'http', discohook.https.HTTPClient(None, os.getenv('TOKEN'), session)) # for referencing in database.py
       async with database.Database(app, os.getenv('DB')) as app.db:
         try:
           yield

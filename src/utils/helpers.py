@@ -2,12 +2,12 @@
 Helper functions or code that is just odd.
 """
 
-import os
+#import os
 import time
 import string
-import aiohttp
+#import aiohttp
 import asyncio
-import hashlib
+#import hashlib
 import discohook
 import numpy as np
 from PIL import Image

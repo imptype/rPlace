@@ -13,7 +13,7 @@ def get_values(interaction):
 
 async def move(interaction, dx, dy):
   x, y, zoom, step, color, osize, refresh_at, _timestamp = get_values(interaction)
-  ox, oy = x, y
+  ox, oy, oz = x, y, zoom
 
   # apply step magnitude
   dx *= step
@@ -21,7 +21,7 @@ async def move(interaction, dx, dy):
 
   # get grid size to get border, we use get so we can do skip draw here if same position
   grid_data, defer_response, new_refresh_at = await get_grid(interaction)
-  size = grid_data[0].get('size', CANVAS_SIZE)
+  size = grid_data[1].get('size', CANVAS_SIZE)
   border = size - 1
 
   # apply and fix if it goes beyond borders
@@ -37,9 +37,13 @@ async def move(interaction, dx, dy):
   elif y > border:
     y = border
 
+  # check with zoom too
+  if zoom > border:
+    zoom = border
+
   # reuse zoom, step and color in new data
   data = x, y, zoom, step, color, refresh_at
-  skip_draw = x == ox and y == oy and size == osize # still at same position of same map size, race condition, skip drawing
+  skip_draw = x == ox and y == oy and size == osize and zoom == oz # still at same position of same map size, race condition, skip drawing
   refresh_data = grid_data, defer_response, new_refresh_at, skip_draw
   await ExploreView(interaction).update(data, refresh_data)
 
@@ -64,7 +68,7 @@ async def color_modal(interaction, color):
     x, y, zoom, step, old_color, _size, refresh_at, timestamp = get_values(interaction)
     assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
-    return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
+    return await interaction.response.send('The Color Modal has expired!', ephemeral = True)
   
   # validate input
   try:
@@ -106,8 +110,8 @@ async def place_button(interaction):
   border = configs.get('size', CANVAS_SIZE) - 1
 
   # if place is outside of border, just do move instead, race condition when u resize grid size
-  if x < 0 or x > border or y < 0 or y > border:
-    return await move(interaction, 0, 0)
+  if x < 0 or x > border or y < 0 or y > border or zoom > border:
+    return await move(interaction, 0, 0) # magnitude doesnt matter
 
   row = grid.get(y)
   x_key = str(x)
@@ -141,7 +145,7 @@ async def place_button(interaction):
       tile = [color, timestamp, count, convert_text(interaction.author.id)]
 
   # update database with new tile or create row if it does not exist
-  if row:
+  if row or (not y and configs) : # row exists or if configs exist if y0
     await interaction.client.db.update_tile(local_id, y, x, tile)
   else:
     await interaction.client.db.create_row(local_id, y, x, tile)
@@ -255,9 +259,10 @@ async def downright_button(interaction):
 async def return_button(interaction):
   await start.StartView(interaction).update() # cant skip draw here because image changes in size
 
+step_sizes = (1, 2, 3, 4, 5, 10, 20, 50, 100, 250)
 step_options = [
   discohook.SelectOption(str(i), str(i)) 
-  for i in (1, 2, 3, 4, 5, 10, 20, 50, 100, 250)
+  for i in step_sizes
 ]
 @discohook.select.text(step_options, custom_id = 'step_select:v{}'.format(BOT_VERSION))
 async def step_select(interaction, values):
@@ -274,9 +279,10 @@ async def step_select(interaction, values):
   data = x, y, zoom, step, color, refresh_at
   await ExploreView(interaction).update(data)
 
+zoom_sizes = (3, 7, 11, 15, 19, 25, 49, 75, 99, 128)
 zoom_options = [
   discohook.SelectOption('{0}x{0}'.format(i), str(i))
-  for i in [3, 7, 11, 15, 19, 25, 49, 75, 99, 128]
+  for i in zoom_sizes
 ]
 @discohook.select.text(zoom_options, placeholder = 'zoom_select', custom_id = 'zoom_select:v{}'.format(BOT_VERSION))
 async def zoom_select(interaction, values):
@@ -290,13 +296,16 @@ async def zoom_select(interaction, values):
   # get cached grid size before we draw it to see if it goes beyond border
   grid_data, defer_response, new_refresh_at = await get_grid(interaction)
 
-  border = grid_data[0].get('size', CANVAS_SIZE) - 1
+  size = grid_data[1].get('size', CANVAS_SIZE)
+  border = size - 1
 
   # fix if it goes beyond new borders
-  if zoom > border: # drawing would be out of bounds otherwise
-    zoom = border
-    if not zoom % 2: # not an odd number
-      zoom -= 1 # ensure odd so cursor placement is accurate
+  if zoom > size: # drawing would be out of bounds otherwise
+    zoom = size # no need to ensure odd because section draw is smart
+  
+  # validate new zoom again, rare
+  if zoom == old_zoom:
+    return await interaction.response.send('Zoom `{0}x{0}` is already selected!!'.format(zoom), ephemeral = True)
   
   if x < 0:
     x = 0
@@ -546,14 +555,28 @@ class ExploreView(discohook.View):
       placeholder = 'Step Size: {}'.format(step),
       custom_id = step_select.custom_id + ':'      
     )
-    dynamic_step_select.options = step_select.options
+    options = []
+    for option in step_select.options:
+      if int(option.value) < size:
+        options.append(option)
+      else:
+        options.append(discohook.SelectOption(str(size), str(size)))
+        break
+    dynamic_step_select.options = options
 
     dynamic_zoom_select = discohook.Select(
       discohook.SelectType.text,
       placeholder = 'Zoom: {0}x{0}'.format(zoom),
       custom_id = zoom_select.custom_id + ':'      
     )
-    dynamic_zoom_select.options = zoom_select.options
+    options = []
+    for option in zoom_select.options:
+      if int(option.value) < size:
+        options.append(option)
+      else:
+        options.append(discohook.SelectOption('{0}x{0}'.format(size), str(size)))
+        break
+    dynamic_zoom_select.options = options
       
     self.add_buttons(dynamic_upleft_button, dynamic_up_button, dynamic_upright_button, dynamic_color_button)
     self.add_buttons(dynamic_left_button, dynmaic_place_button, dynamic_right_button, jump_button)

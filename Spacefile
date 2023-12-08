@@ -42,6 +42,7 @@ micros:
       - name: HOUR
       - name: DAY
       - name: WEEK
+      - name: TOKEN
     actions:
       - id: 'check'
         name: 'Check'

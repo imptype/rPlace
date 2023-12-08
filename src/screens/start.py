@@ -1,10 +1,11 @@
 import io
 import asyncio
 import discohook
+from PIL import Image
 from ..screens.explore import ExploreView
 from ..screens.top import TopView
 from ..screens.settings import SettingsView
-from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, BOT_VERSION
+from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, BOT_VERSION, IMAGE_SIZE
 from ..utils.helpers import get_grid, draw_map, get_local_id, is_admin
 
 @discohook.button.new('Explore', emoji = '🔍', custom_id = 'explore:v{}'.format(BOT_VERSION))
@@ -64,6 +65,8 @@ class StartView(discohook.View):
     else:
       def blocking():
         im = draw_map(grid, size)
+        if size < CANVAS_SIZE:          
+          im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer

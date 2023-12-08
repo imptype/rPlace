@@ -19,7 +19,7 @@ class Database(Deta):
   def __init__(self, app, key, loop = None):
     super().__init__(key, loop = loop)
     self.app = app
-    self.names = ['pixels', 'logs', 'config']
+    self.names = ['pixels', 'logs', 'config'] # config reserved for snapshots/meta
     for name in self.names:
       setattr(self, name, self.base(name))
 
@@ -46,20 +46,32 @@ class Database(Deta):
         grid[y] = record
     return grid, configs
   
+  async def update_configs(self, local_id, exists, config, value):
+    assert local_id, 'not allowed for global canvas'
+    key = get_key(local_id, 0)
+    if exists:
+      updater = Updater()
+      updater.set(config, value)
+      await self.pixels.update(key, updater)
+      print('update')
+    else:
+      kwargs = {config : value}
+      local_id = convert_text(local_id) # saves storage
+      record = Record(key, local_id = local_id, **kwargs)
+      await self.pixels.insert(record)
+      print('insert')
+  
   async def create_row(self, local_id, y, x, tile):
     key = get_key(local_id, y)
     kwargs = {str(x) : tile}
     if local_id:
       local_id = convert_text(local_id) # saves storage
-    record = Record(
-      key,
-      local_id = local_id,
-      **kwargs
-    )
+    record = Record(key, local_id = local_id, **kwargs)
     await self.pixels.insert(record)
 
   async def update_tile(self, local_id, y, x, tile): # make sure row exists, db fetch prior
     key = get_key(local_id, y) # this is broken for local dms unsure why, bad chars in keys?
+    print('this is key', key)
     updater = Updater()
     updater.set(str(x), tile)
     await self.pixels.update(key, updater)
