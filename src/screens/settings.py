@@ -158,7 +158,7 @@ class SettingsView(discohook.View):
     self.embed = discohook.Embed(
       'r/Place Local Settings',
       description = '\n'.join([
-        'If you are the __**server admin**__ then you can configure the settings below for your local server canvas:',
+        'If you are the __**server admin**__ then you can configure the following settings below for your local server canvas!',
         '',
         '**[1] Resizing Canvas (Current Size: `{0}x{0}`)**'.format(size),
         'Resizes the local canvas anywhere between 3x3 to 1000x1000. Pixel data outside of the new resized region will persist and will return if you decide to resize back.',
