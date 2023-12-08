@@ -93,7 +93,7 @@ class StartView(discohook.View):
   
   async def send(self):
     await self.setup()
-    if self.defer_response: # if grid reloaded, it has to be deferred
+    if self.defer_response or self.interaction.responded: # if grid reloaded, it has to be deferred, responded is temp fix for defer on creation, unsure
       # this is meant to be self.defer_response.send(), lib put followup in interaction.response
       await self.interaction.response.followup(embed = self.embed, view = self)
     else:
