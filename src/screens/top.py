@@ -74,7 +74,7 @@ class TopView(discohook.View):
     
     # get grid
     (grid, configs), self.defer_response, new_refresh_at = await get_grid(self.interaction)
-    size = configs.get('size', CANVAS_SIZE)
+    size = configs.get('size') or CANVAS_SIZE
     
     # benchmarks 
     # 100 0.0007

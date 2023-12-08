@@ -46,7 +46,7 @@ async def resize_modal(interaction, size):
 
   # fetch up to date grid
   (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True)
-  old_size = configs.get('size', CANVAS_SIZE)
+  old_size = configs.get('size') or CANVAS_SIZE
 
   # validate new size again, prevent 1 request
   if size == old_size:
@@ -99,7 +99,7 @@ async def cooldown_modal(interaction, cooldown):
 
   # fetch up to date grid for configs
   (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
-  old_cooldown = configs.get('cooldown', 0) # should be None if never used or 0 if reset back
+  old_cooldown = configs.get('cooldown') or 0 # should be None if never used or 0 if reset back
 
   # validate new size again, prevent 1 request
   if cooldown == old_cooldown:
@@ -151,9 +151,9 @@ class SettingsView(discohook.View):
       refresh_at = int(self.interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
       skip_draw = refresh_at >= new_refresh_at
 
-    size = configs.get('size', CANVAS_SIZE)
+    size = configs.get('size') or CANVAS_SIZE
     cooldown = configs.get('cooldown') or 0
-    allowed = configs.get('allowed')
+    #allowed = configs.get('allowed')
 
     self.embed = discohook.Embed(
       'r/Place Local Settings',

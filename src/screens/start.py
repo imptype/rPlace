@@ -49,7 +49,7 @@ class StartView(discohook.View):
       (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction)
       skip_draw = False
 
-    size = configs.get('size', CANVAS_SIZE)
+    size = configs.get('size') or CANVAS_SIZE
     self.embed = discohook.Embed(
       'Welcome to r/Place!',
       description = '\n'.join([

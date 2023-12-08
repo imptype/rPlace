@@ -116,7 +116,7 @@ async def place_button(interaction):
   
   (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
 
-  border = configs.get('size', CANVAS_SIZE) - 1
+  border = (configs.get('size') or CANVAS_SIZE) - 1
 
   # if place is outside of border, just do move instead, race condition when u resize grid size
   if x < 0 or x > border or y < 0 or y > border or zoom > border:
@@ -136,7 +136,7 @@ async def place_button(interaction):
     return await interaction.response.send('The tile `({}, {})` is already the color `#{:06x}`!'.format(x, y, color), ephemeral = True)
 
   # recheck cooldown with updated db cooldown, happens when no cooldown vs newly added cooldown
-  cooldown = configs.get('cooldown', 0) # 0 or a number
+  cooldown = configs.get('cooldown') or 0 # 0 or a number
   if cooldown: # global cooldown might have cooldown in future
     # check if user is in cache, prevents one extra request
     key = '{}{}'.format('{}:'.format(local_id) if local_id else '', interaction.author.id)
@@ -455,8 +455,8 @@ class ExploreView(discohook.View):
     if thumbnail_url:
       self.embed.set_thumbnail(thumbnail_url)
 
-    size = configs.get('size', CANVAS_SIZE)
-    cooldown = configs.get('cooldown', 0)
+    size = configs.get('size') or CANVAS_SIZE # can sneakily be None
+    cooldown = configs.get('cooldown') or 0 # same here
     border = size - 1
 
     if skip_draw: # saves redrawing pointlessly if it hasn't refreshed
