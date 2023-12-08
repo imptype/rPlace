@@ -86,8 +86,10 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
 
       done, pending = await asyncio.wait((defer_task, fetch_task), return_when = asyncio.FIRST_COMPLETED)
       
+      print('d&p', done, pending)
       if defer_task in done: # 2 seconds passed
         defer_response = defer_task.result()
+        print('this defer response', defer_response, interaction.responded)
       else:
         defer_task.cancel()
       
