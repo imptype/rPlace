@@ -6,13 +6,13 @@ import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION
-from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username#, encrypt_text
+from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username, get_local_id#, encrypt_text
 
 def get_values(interaction):
   return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
 
 async def move(interaction, dx, dy):
-  x, y, zoom, step, color, osize, refresh_at, _timestamp = get_values(interaction)
+  x, y, zoom, step, color, osize, _cooldown, refresh_at, _timestamp = get_values(interaction)
   ox, oy, oz = x, y, zoom
 
   # apply step magnitude
@@ -65,7 +65,7 @@ async def color_modal(interaction, color):
   
   # validate timestamp
   try:
-    x, y, zoom, step, old_color, _size, refresh_at, timestamp = get_values(interaction)
+    x, y, zoom, step, old_color, _size, _cooldown, refresh_at, timestamp = get_values(interaction)
     assert int(interaction.data['custom_id'].split(':')[-1]) == int(timestamp) # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Color Modal has expired!', ephemeral = True)
@@ -103,7 +103,16 @@ async def left_button(interaction):
 
 @discohook.button.new(emoji = '🆗', custom_id = 'place:v{}'.format(BOT_VERSION))
 async def place_button(interaction):
-  x, y, zoom, step, color, _size, _refresh_at, _timestamp = get_values(interaction)
+  x, y, zoom, step, color, _size, cooldown, _refresh_at, _timestamp = get_values(interaction)
+
+  # check cooldown here, can be out of date though but saves a request
+  local_id = get_local_id(interaction) # needed so we're able to skip 1 more request
+  if cooldown: # exists, greater than 0
+    key = '{}{}'.format('{}:'.format(local_id) if local_id else '', interaction.author.id)
+    ends_at = interaction.client.cooldowns.get(key, 0)
+    now = time.time()
+    if ends_at > now:
+      return await interaction.response.send('You are on a cooldown! Ends: <t:{}:R>'.format(ends_at), ephemeral = True)
   
   (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
 
@@ -122,11 +131,32 @@ async def place_button(interaction):
     grid[y] = row
     tile = None
 
+  # validate tile is not already the same color, rare case if place button is outdated
+  if tile and tile[0] == color: 
+    return await interaction.response.send('The tile `({}, {})` is already the color `#{:06x}`!'.format(x, y, color), ephemeral = True)
+
+  # recheck cooldown with updated db cooldown, happens when no cooldown vs newly added cooldown
+  cooldown = configs.get('cooldown', 0) # 0 or a number
+  if cooldown: # global cooldown might have cooldown in future
+    # check if user is in cache, prevents one extra request
+    key = '{}{}'.format('{}:'.format(local_id) if local_id else '', interaction.author.id)
+    ends_at = interaction.client.cooldowns.get(key, 0)
+    now = time.time()
+    if ends_at > now: # still on cooldown
+      return await interaction.response.send('You are on a cooldown!! Ends: <t:{}:R>'.format(ends_at), ephemeral = True)
+    # triple confirm with fetch db
+    ends_at = await interaction.client.db.get_cooldown(key)
+    if ends_at:
+      interaction.client.cooldowns[key] = ends_at
+      return await interaction.response.send('You are on a cooldown!!! Ends: <t:{}:R>'.format(ends_at), ephemeral = True)
+    # insert into db and continue
+    ends_at = int(time.time() + cooldown) # db limits int sizes
+    await interaction.client.db.add_cooldown(key, ends_at)
+    interaction.client.cooldowns[key] = ends_at
+
   # overwrite tile, just increment count [0 color, 1 timestamp, 2 count, 3 userid:None, 4 guildidNone]
   if tile:
-    if tile[0] == color: # validate tile is not already the same color, rare case if place button is outdated
-      return await interaction.response.send('The tile `({}, {})` is already the color `#{:06x}`!'.format(x, y, color), ephemeral = True)
-    count = tile[2] + 1
+    count = tile[2] + 1 # not combined with above to check the cooldown
   else:
     count = 0
 
@@ -186,7 +216,7 @@ async def jump_modal(interaction, x, y):
 
   # validate timestamp
   try:
-    old_x, old_y, zoom, step, color, _size, refresh_at, timestamp = get_values(interaction) # message values
+    old_x, old_y, zoom, step, color, _size, _cooldown, refresh_at, timestamp = get_values(interaction) # message values
     assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Jump Modal has expired!', ephemeral = True)
@@ -225,7 +255,7 @@ async def jump_button(interaction):
 
   # we use cached size here because modal response time is strictly 3 seconds
   # and we partially validate size on modal callback and it's forced when you attempt to place anyway
-  _x, _y, _zoom, _step, _color, size, _refresh_at, timestamp = get_values(interaction)
+  _x, _y, _zoom, _step, _color, size, _cooldown, _refresh_at, timestamp = get_values(interaction)
   border = size - 1
 
   modal = discohook.Modal(
@@ -268,7 +298,7 @@ step_options = [
 async def step_select(interaction, values):
 
   # using this to validate wouldn't matter anyway
-  x, y, zoom, old_step, color, _size, refresh_at, _timestamp = get_values(interaction)
+  x, y, zoom, old_step, color, _size, _cooldown, refresh_at, _timestamp = get_values(interaction)
   step = int(values[0])
   
   # validate new step
@@ -286,7 +316,7 @@ zoom_options = [
 ]
 @discohook.select.text(zoom_options, placeholder = 'zoom_select', custom_id = 'zoom_select:v{}'.format(BOT_VERSION))
 async def zoom_select(interaction, values):
-  x, y, old_zoom, step, color, _size, refresh_at, _timestamp = get_values(interaction)
+  x, y, old_zoom, step, color, _size, _cooldown, refresh_at, _timestamp = get_values(interaction)
   zoom = int(values[0])
   
   # validate new zoom
@@ -426,6 +456,7 @@ class ExploreView(discohook.View):
       self.embed.set_thumbnail(thumbnail_url)
 
     size = configs.get('size', CANVAS_SIZE)
+    cooldown = configs.get('cooldown', 0)
     border = size - 1
 
     if skip_draw: # saves redrawing pointlessly if it hasn't refreshed
@@ -492,7 +523,7 @@ class ExploreView(discohook.View):
 
     dynamic_upleft_button = discohook.Button(
       emoji = upleft_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(upleft_button.custom_id, x, y, zoom, step, color, size, refresh_at, timestamp),
+      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(upleft_button.custom_id, x, y, zoom, step, color, size, cooldown, refresh_at, timestamp),
       disabled = not x or y == border
     )
     

@@ -73,13 +73,64 @@ async def resize_button(interaction):
   modal.rows.append(resize_field.to_dict())
   await interaction.response.send_modal(modal)
 
+cooldown_field = discohook.TextInput('Cooldown Seconds', 'cooldown', hint = 'A number in the range of 0-86400', min_length = 1, max_length = 5, required = True)
+@discohook.modal.new('Resize Modal', fields = [], custom_id = 'admin_cooldown_modal:v{}'.format(BOT_VERSION))
+async def cooldown_modal(interaction, cooldown):
+
+  # validate timestamp
+  try:
+    timestamp, _size, old_cooldown, _allowed, refresh_at = explore.get_values(interaction) # message values
+    assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
+  except: # index error = wrong screen, assert error = wrong timestamp
+    return await interaction.response.send('The Cooldown Modal has expired!', ephemeral = True)
+
+  # validate integers, accepts numbers from other languages
+  if not cooldown.isdecimal():
+    return await interaction.response.send('Cooldown `{}` is not a number!'.format(cooldown), ephemeral = True)
+  cooldown = int(cooldown)
+
+  # validate new cooldown prevent 2 request
+  if cooldown == old_cooldown:
+    return await interaction.response.send('The canvas cooldown is already `{}`! Reopen the menu if you think this message outdated.'.format(cooldown), ephemeral = True)  
+  
+  # validate the range
+  if not 0 <= cooldown <= 86400: # 24 * 60 * 60
+    return await interaction.response.send('Cooldown `{}` is out of range!'.format(cooldown), ephemeral = True)
+
+  # fetch up to date grid for configs
+  (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
+  old_cooldown = configs.get('cooldown', 0) # should be None if never used or 0 if reset back
+
+  # validate new size again, prevent 1 request
+  if cooldown == old_cooldown:
+    return await interaction.response.send('The canvas is already the size `{}`!! Reopen the menu if you think this message outdated.'.format(cooldown), ephemeral = True)  
+  
+  # update if y0 exists, extremely rare to error and autofixes on next move
+  exists = 0 in grid
+  await interaction.client.db.update_configs(local_id, exists, 'cooldown', cooldown)
+  configs['cooldown'] = cooldown  
+
+  # skip drawing if old refresh is more up to date / wont happen because we force fetched
+  skip_draw = False #refresh_at >= new_refresh_at
+
+  # all good, update view
+  refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
+  await SettingsView(interaction).update(refresh_data)
+  
 @discohook.button.new('Set Cooldown', emoji = '⏰', custom_id = 'admin_cooldown:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
 async def cooldown_button(interaction):
-  await interaction.response.send('click set cooldown')
+  if not interaction.guild_id:
+    return await interaction.response.send('Cooldown setting is not available for DM canvases.', ephemeral = True)
+  modal = discohook.Modal(
+    cooldown_modal.title,
+    custom_id = '{}:{}'.format(cooldown_modal.custom_id, explore.get_values(interaction)[0])
+  )
+  modal.rows.append(cooldown_field.to_dict())
+  await interaction.response.send_modal(modal)
 
-@discohook.button.new('Set Allowed Role', emoji = '👤', custom_id = 'admin_role:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+"""@discohook.button.new('Set Allowed Role', emoji = '👤', custom_id = 'admin_role:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
 async def allowed_button(interaction):
-  await interaction.response.send('click set allowed role')
+  await interaction.response.send('click set allowed role')"""
 
 class SettingsView(discohook.View):
   def __init__(self, interaction = None):
@@ -87,7 +138,7 @@ class SettingsView(discohook.View):
     if interaction:
       self.interaction = interaction
     else: # persistent
-      self.add_buttons(back_button, resize_button, cooldown_button, allowed_button)
+      self.add_buttons(back_button, resize_button, cooldown_button)#, allowed_button)
 
   async def setup(self, refresh_data): # ainit
 
@@ -107,16 +158,16 @@ class SettingsView(discohook.View):
     self.embed = discohook.Embed(
       'r/Place Local Settings',
       description = '\n'.join([
-        'This is a __**work in progress**__. In the near future, you\'ll be able to do the following to configure your local canvas:',
+        'If you are the __**server admin**__ then you can configure the settings below for your local server canvas:',
         '',
         '**[1] Resizing Canvas (Current Size: `{0}x{0}`)**'.format(size),
         'Resizes the local canvas anywhere between 3x3 to 1000x1000. Pixel data outside of the new resized region will persist and will return if you decide to resize back.',
         '',
         '**[2] Setting a cooldown (Current: `{} seconds`)**'.format(cooldown),
-        'Set a cooldown between None to 24 hours. A cooldown means if someone placed a pixel, they will have to wait that amount of time before they can place another one again.',
-        '',
-        '**[3] Set allowed/whitelisted role (Current: {})**'.format('<@&{}>'.format(allowed) if allowed else 'N/A'),
-        'If you set this, only people with this role can actually place pixels. This is useful if you want people to be able to spectate but not be able to overwrite pixels.'
+        'Set a cooldown between 0 seconds to 24 hours. A cooldown means if someone placed a pixel, they will have to wait that amount of time before they can place another one again.',
+        #'',
+        #'**[3] Set allowed/whitelisted role (Current: {})**'.format('<@&{}>'.format(allowed) if allowed else 'N/A'),
+        #'If you set this, only people with this role can actually place pixels. This is useful if you want people to be able to spectate but not be able to overwrite pixels.'
       ]),
       color = COLOR_RED
     )
@@ -143,7 +194,8 @@ class SettingsView(discohook.View):
       emoji = back_button.emoji,
       custom_id = '{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size, cooldown, allowed if allowed else 0, new_refresh_at)
     )
-    self.add_buttons(dynamic_back_button, resize_button, cooldown_button, allowed_button)
+
+    self.add_buttons(dynamic_back_button, resize_button, cooldown_button)#, allowed_button)
   
   async def update(self, refresh_data = None):
     await self.setup(refresh_data)
