@@ -186,6 +186,7 @@ def run():
         '',
         'Workers: {}'.format(multiprocessing.cpu_count() * 2 + 1),
         'Extra: {}'.format(app.http.session._loop == asyncio.get_running_loop()),
+        'Main: {}'.format(app.maintenance),
         'Test: {}'.format(app.test),
         '',
         'Pixels Cache:\n  {}'.format('\n  '.join([
