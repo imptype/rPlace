@@ -104,7 +104,7 @@ async def left_button(interaction):
 def cooldown_embed(interaction, ends_at, remaining, code = 1):
   embed = interaction.message.embeds[0]
   if embed.color == COLOR_RED: # already updated embed cooldown message = trim description
-    embed.description = '\n'.join('\n'.split(embed.description)[:-2])
+    embed.description = '\n'.join(embed.description.split('\n')[:-3])
   else:
     embed.color = COLOR_RED
   embed.description += '\n\n' + '\n'.join([
@@ -158,7 +158,6 @@ async def place_button(interaction):
   if cooldown: # global cooldown might have cooldown in future
 
     # if they own the premium, ignore this if cooldown is less than 1 min long too
-    
 
     # check if user is in cache, prevents one extra request
     key = '{}{}'.format('{}:'.format(local_id) if local_id else '', interaction.author.id)
