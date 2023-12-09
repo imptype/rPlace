@@ -38,8 +38,8 @@ async def move(interaction, dx, dy):
     y = border
 
   # check with zoom too
-  if zoom > border:
-    zoom = border
+  if zoom > size:
+    zoom = size
 
   # reuse zoom, step and color in new data
   data = x, y, zoom, step, color, refresh_at
@@ -456,6 +456,9 @@ class ExploreView(discohook.View):
       self.embed.set_thumbnail(thumbnail_url)
 
     size = configs.get('size') or CANVAS_SIZE # can sneakily be None
+    if not data: # not sure if this is needed here
+      if zoom > size:
+        zoom = size # fix starter zoom
     cooldown = configs.get('cooldown') or 0 # same here
     border = size - 1
 
