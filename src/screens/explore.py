@@ -145,13 +145,13 @@ async def place_button(interaction):
     grid[y] = row
     tile = None
 
+  # tile updated or already the color uses these, cooldown doesn't to save drawing time
+  data = x, y, zoom, step, color, refresh_at
+  refresh_data = (grid, configs), defer_response, refresh_at, False
+
   # validate tile is not already the same color, rare case if place button is outdated
   if tile and tile[0] == color:
-    if defer_response: # was deferred
-      method = defer_response.send
-    else:
-      method = interaction.response.send
-    return await method('The tile `({}, {})` is already the color `#{:06x}`!'.format(x, y, color), ephemeral = True)
+    return await ExploreView(interaction).update(data, refresh_data, (x, y, color))
 
   # recheck cooldown with updated db cooldown, happens when no cooldown vs newly added cooldown
   cooldown = configs.get('cooldown') or 0 # 0 or a number
@@ -163,7 +163,7 @@ async def place_button(interaction):
     key = '{}{}'.format('{}:'.format(local_id) if local_id else '', interaction.author.id)
     ends_at = interaction.client.cooldowns.get(key, 0)
     now = time.time()
-    if ends_at > now: # still on cooldown
+    if ends_at > now: # still on cooldown, the below prevents unnecessary drawing too
       if defer_response:
         method = defer_response.edit
       else:
@@ -211,8 +211,6 @@ async def place_button(interaction):
   
   # update row/cache
   row[x_key] = tile
-  data = x, y, zoom, step, color, refresh_at
-  refresh_data = (grid, configs), defer_response, refresh_at, False
   await ExploreView(interaction).update(data, refresh_data)
 
   # record log
@@ -402,7 +400,7 @@ class ExploreView(discohook.View):
       self.add_select(step_select)
       self.add_select(zoom_select)
 
-  async def setup(self, data, refresh_data): # ainit
+  async def setup(self, data, refresh_data, extra): # ainit
 
     if data:
       x, y, zoom, step, color, old_refresh_at = data
@@ -483,8 +481,10 @@ class ExploreView(discohook.View):
     self.embed = discohook.Embed(
       'Selecting Tile ({}, {})'.format(x, y),
       description = text,
-      color = COLOR_BLURPLE
+      color = COLOR_RED if extra else COLOR_BLURPLE
     )
+    if extra: # same color from place
+      self.embed.description += '\n\n' + 'The tile `({}, {})` is already the color `#{:06x}`!'.format(x, y, color)
     if thumbnail_url:
       self.embed.set_thumbnail(thumbnail_url)
 
@@ -651,9 +651,9 @@ class ExploreView(discohook.View):
     self.add_select(dynamic_step_select)
     self.add_select(dynamic_zoom_select)
 
-  async def update(self, data = None, refresh_data = None): # done in update function, saves pointer memory maybe
-    await self.setup(data, refresh_data) # refresh_data is any component here, excludes from startview
-    if self.defer_response:
+  async def update(self, data = None, refresh_data = None, extra = None): # done in update function, saves pointer memory maybe
+    await self.setup(data, refresh_data, extra) # refresh_data is any component here, excludes from startview
+    if self.defer_response: # extra is pixel was already placed, it needs refresh
       await self.defer_response.edit(embed = self.embed, view = self)
     else:
       await self.interaction.response.update_message(embed = self.embed, view = self)
