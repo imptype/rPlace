@@ -116,10 +116,11 @@ async def place_button(interaction):
   
   (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
 
-  border = (configs.get('size') or CANVAS_SIZE) - 1
+  size = configs.get('size') or CANVAS_SIZE
+  border = size - 1
 
   # if place is outside of border, just do move instead, race condition when u resize grid size
-  if x < 0 or x > border or y < 0 or y > border or zoom > border:
+  if x < 0 or x > border or y < 0 or y > border or zoom > size:
     return await move(interaction, 0, 0) # magnitude doesnt matter
 
   row = grid.get(y)
