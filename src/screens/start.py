@@ -49,9 +49,19 @@ class StartView(discohook.View):
       (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction)
       skip_draw = False
 
+    local_id = get_local_id(self.interaction)
+    
+    if self.interaction.guild_id:
+      if local_id:
+        title = 'your Server Canvas'
+      else:
+        title = 'the Global Canvas'
+    else:
+      title = 'your Personal Canvas'
+
     size = configs.get('size') or CANVAS_SIZE
     self.embed = discohook.Embed(
-      'Welcome to r/Place!',
+      'Welcome to {}!'.format(title),
       description = '\n'.join([
         'Canvas size: {0}x{0}'.format(size),
         '',
@@ -83,7 +93,6 @@ class StartView(discohook.View):
       custom_id = '{}:{}'.format(explore_button.custom_id, refresh_at)
     )
 
-    local_id = get_local_id(self.interaction)
     is_admin_check = bool(local_id and is_admin(self.interaction)) # checks if they can edit canvas
 
     if is_admin_check:
