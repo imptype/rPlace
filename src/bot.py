@@ -62,8 +62,18 @@ def run():
       return print('Ignoring maintenance failure', error.message)
       
     # Build error text with local variable values
+    text = '{}: {}'.format(type(error).__name__, str(error))
+    text += '\n'
+    text += '.'.join(map(lambda x: x.__name__, error.__class__.__mro__))
+    text += '\n\n'
+    text += 'Command: {}'.format(interaction.payload['data']['name']) if interaction.kind == 2 else 'Component: {}'.format(interaction.data['custom_id'])
+    text += '\n'
+    text += 'User: {} | {}, Guild: {}'.format(interaction.author.name, interaction.author.id, interaction.guild_id)
+    text += '\n\n'
     trace = tuple(traceback.TracebackException.from_exception(error).format())
-    text = trace[0].rstrip() + '\n'
+    text += ''.join(trace)
+    text += '\n\n'
+    text += trace[0].rstrip() + '\n'
     frame = error.__traceback__.tb_next
     for i in trace[1:-2]:
       text += i # File ...

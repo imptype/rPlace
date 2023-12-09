@@ -5,7 +5,7 @@ import discohook
 import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
-from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION
+from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION, COLOR_RED
 from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username, get_local_id#, encrypt_text
 
 def get_values(interaction):
@@ -101,6 +101,19 @@ async def color_button(interaction):
 async def left_button(interaction):
   await move(interaction, -1, 0)
 
+def cooldown_embed(interaction, ends_at, remaining, code = 1):
+  embed = interaction.message.embeds[0]
+  if embed.color == COLOR_RED: # already updated embed cooldown message = trim description
+    embed.description = '\n'.join('\n'.split(embed.description)[:-2])
+  else:
+    embed.color = COLOR_RED
+  embed.description += '\n\n' + '\n'.join([
+    'You are on a cooldown{}'.format('!' * code),
+    'Ends: <t:{}:R> (`{:.2f}s`)'.format(ends_at, remaining)
+  ])
+  embed.set_image('attachment://map.png')
+  return embed
+
 @discohook.button.new(emoji = '🆗', custom_id = 'place:v{}'.format(BOT_VERSION))
 async def place_button(interaction):
   x, y, zoom, step, color, _size, cooldown, _refresh_at, _timestamp = get_values(interaction)
@@ -112,7 +125,7 @@ async def place_button(interaction):
     ends_at = interaction.client.cooldowns.get(key, 0)
     now = time.time()
     if ends_at > now:
-      return await interaction.response.send('You are on a cooldown! Ends: <t:{}:R>'.format(ends_at), ephemeral = True)
+      return await interaction.response.update_message(embed = cooldown_embed(interaction, ends_at, ends_at - now))
   
   (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
 
@@ -133,8 +146,12 @@ async def place_button(interaction):
     tile = None
 
   # validate tile is not already the same color, rare case if place button is outdated
-  if tile and tile[0] == color: 
-    return await interaction.response.send('The tile `({}, {})` is already the color `#{:06x}`!'.format(x, y, color), ephemeral = True)
+  if tile and tile[0] == color:
+    if defer_response: # was deferred
+      method = defer_response.send
+    else:
+      method = interaction.response.send
+    return await method('The tile `({}, {})` is already the color `#{:06x}`!'.format(x, y, color), ephemeral = True)
 
   # recheck cooldown with updated db cooldown, happens when no cooldown vs newly added cooldown
   cooldown = configs.get('cooldown') or 0 # 0 or a number
@@ -144,12 +161,20 @@ async def place_button(interaction):
     ends_at = interaction.client.cooldowns.get(key, 0)
     now = time.time()
     if ends_at > now: # still on cooldown
-      return await interaction.response.send('You are on a cooldown!! Ends: <t:{}:R>'.format(ends_at), ephemeral = True)
+      if defer_response:
+        method = defer_response.edit
+      else:
+        method = interaction.response.update_message      
+      return await method(embed = cooldown_embed(interaction, ends_at, ends_at - now, 2))
     # triple confirm with fetch db
     ends_at = await interaction.client.db.get_cooldown(key)
     if ends_at:
       interaction.client.cooldowns[key] = ends_at
-      return await interaction.response.send('You are on a cooldown!!! Ends: <t:{}:R>'.format(ends_at), ephemeral = True)
+      if defer_response:
+        method = defer_response.edit
+      else:
+        method = interaction.response.update_message
+      return await method(embed = cooldown_embed(interaction, ends_at, ends_at - now, 3))
     # insert into db and continue
     ends_at = int(time.time() + cooldown) # db limits int sizes
     await interaction.client.db.add_cooldown(key, ends_at)
@@ -336,7 +361,11 @@ async def zoom_select(interaction, values):
   
   # validate new zoom again, rare
   if zoom == old_zoom:
-    return await interaction.response.send('Zoom `{0}x{0}` is already selected!!'.format(zoom), ephemeral = True)
+    if defer_response:
+      method = defer_response.send
+    else:
+      method = interaction.response.send
+    return await method('Zoom `{0}x{0}` is already selected!!'.format(zoom), ephemeral = True)
   
   if x < 0:
     x = 0
