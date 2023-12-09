@@ -205,13 +205,13 @@ async def place_button(interaction):
 
   # update database with new tile or create row if it does not exist
   if row or (not y and configs) : # row exists or if configs exist if y0
-    await interaction.client.db.update_tile(local_id, y, x, tile)
+    task1 = interaction.client.db.update_tile(local_id, y, x, tile)
   else:
-    await interaction.client.db.create_row(local_id, y, x, tile)
+    task1 = interaction.client.db.create_row(local_id, y, x, tile)
   
   # update row/cache
   row[x_key] = tile
-  await ExploreView(interaction).update(data, refresh_data)
+  task2 = ExploreView(interaction).update(data, refresh_data)
 
   # record log
   guild_name = None
@@ -219,7 +219,7 @@ async def place_button(interaction):
     guild_data = await get_guild_data(interaction, interaction.guild_id)
     guild_name = guild_data[0] if guild_data else False
   
-  await interaction.client.db.record_log(
+  task3 = interaction.client.db.record_log(
     get_username(interaction.author),
     interaction.author.id,
     x,
@@ -229,6 +229,9 @@ async def place_button(interaction):
     interaction.guild_id,
     is_local_check
   )
+
+  # do all at once, reduce execution time
+  await asyncio.gather(task1, task2, task3)
 
 @discohook.button.new(emoji = '➡️', custom_id = 'right:v{}'.format(BOT_VERSION))
 async def right_button(interaction):
