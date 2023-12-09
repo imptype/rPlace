@@ -8,9 +8,9 @@ vote_button = discohook.button.link('Vote', url = BOT_VOTE_URL, emoji = '🏆')
 @discohook.command.slash('help', description = 'Guide to using the bot!')
 async def help_command(interaction):
   embed = discohook.Embed(
-    '📜 r/Place Help & Information',
+    '📜 Pixel Canvas Help & Information',
     description = '\n'.join([
-      'This bot recreates the [r/Place subreddit](https://reddit.com/r/place) experience on Discord as closely as possible, with a moving cursor and such.',
+      'In other words, bot recreates the [r/Place subreddit](https://reddit.com/r/place) experience on Discord as closely as possible, with a moving cursor and such.',
       '',
       '**Commands [4]**',
       '> The prefix is [Slash Commands](https://support.discord.com/hc/en-us/articles/1500000368501-Slash-Commands-FAQ).',
