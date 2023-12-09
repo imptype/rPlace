@@ -154,6 +154,7 @@ class SettingsView(discohook.View):
     size = configs.get('size') or CANVAS_SIZE
     cooldown = configs.get('cooldown') or 0
     #allowed = configs.get('allowed')
+    allowed = 0 # unused for now
 
     self.embed = discohook.Embed(
       'r/Place Local Settings',

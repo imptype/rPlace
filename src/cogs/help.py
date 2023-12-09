@@ -10,7 +10,7 @@ async def help_command(interaction):
   embed = discohook.Embed(
     '📜 Pixel Canvas Help & Information',
     description = '\n'.join([
-      'In other words, bot recreates the [r/Place subreddit](https://reddit.com/r/place) experience on Discord as closely as possible, with a moving cursor and such.',
+      '**Pixel Canvas** lets you place pixels on a resizable canvas with others in real-time. You can draw pixel art or wage pixel wars! In other words, this bot recreates the [r/Place subreddit](https://reddit.com/r/place) experience on Discord as closely as possible, with a moving cursor and such.',
       '',
       '**Commands [4]**',
       '> The prefix is [Slash Commands](https://support.discord.com/hc/en-us/articles/1500000368501-Slash-Commands-FAQ).',
