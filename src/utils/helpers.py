@@ -270,3 +270,9 @@ def short_text(text, max_characters, shortest = False):
     b = b.format(len(a)-n)
     a = a[:n-len(b)] + b
   return a
+
+def check_premium(interaction):
+  entitlements = interaction.payload.get('entitlements')
+  for i in entitlements:
+    if int(i['sku_id']) == constants.PREMIUM_SKU_ID:
+      return True

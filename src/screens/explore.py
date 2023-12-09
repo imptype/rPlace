@@ -156,6 +156,10 @@ async def place_button(interaction):
   # recheck cooldown with updated db cooldown, happens when no cooldown vs newly added cooldown
   cooldown = configs.get('cooldown') or 0 # 0 or a number
   if cooldown: # global cooldown might have cooldown in future
+
+    # if they own the premium, ignore this if cooldown is less than 1 min long too
+    
+
     # check if user is in cache, prevents one extra request
     key = '{}{}'.format('{}:'.format(local_id) if local_id else '', interaction.author.id)
     ends_at = interaction.client.cooldowns.get(key, 0)
