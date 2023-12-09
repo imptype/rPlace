@@ -157,7 +157,7 @@ class SettingsView(discohook.View):
     allowed = 0 # unused for now
 
     self.embed = discohook.Embed(
-      'r/Place Local Settings',
+      'Pixel Canvas Local Settings',
       description = '\n'.join([
         'If you are the __**server admin**__ then you can configure the following settings below for your local server canvas!',
         '',

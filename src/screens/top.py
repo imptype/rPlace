@@ -244,8 +244,16 @@ class TopView(discohook.View):
       texts.append(empty)
     texts.append('')
 
+    if self.interaction.guild_id:      
+      if local_id:
+        title = 'Server'
+      else:
+        title = 'Global'
+    else:
+      title = 'Personal'
+
     self.embed = discohook.Embed(
-      'r/Place Statistics',
+      '{} Canvas Statistics'.format(title),
       description = '\n'.join(texts),
       color = COLOR_BLURPLE
     )
