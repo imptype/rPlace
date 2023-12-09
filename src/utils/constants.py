@@ -2,10 +2,10 @@
 Contains constants, not secrets but things that might change.
 """
 
-BOT_VERSION = '3.2'
+BOT_VERSION = '3.3_a'
 
 # Bot stuff
-BOT_AVATAR_URL = 'https://cdn.discordapp.com/avatars/970423357206061056/16c2bb057a54a0ab358d1b36f15d169d.png'
+BOT_AVATAR_URL = 'https://cdn.discordapp.com/avatars/970423357206061056/b99ed1acd81e8d3dfe745cc77e2ff2ac.png?size=1024'
 BOT_INVITE_URL = 'https://discord.com/api/oauth2/authorize?scope=bot&client_id=970423357206061056'
 BOT_SUPPORT_URL = 'https://discord.gg/BZHPGjKYRz'
 BOT_VOTE_URL = 'https://top.gg/bot/970423357206061056/vote'
