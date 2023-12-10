@@ -1,10 +1,9 @@
 {
-  "functions": 
-    {
-      "main" : {
-        "runtime" : "@vercel/python",
-        "memory" : 128
-      }
+  "functions": {
+    "main" : {
+      "runtime" : "@vercel/python@4.1.0",
+      "memory" : 128
+    }
   },
   "routes": [
     {
