@@ -3,7 +3,7 @@
     { "source": "/api", "destination": "/" }
   ],
   "functions": {
-    "/**" : {
+    "**" : {
       "runtime": "@vercel/python@4.1.0",
       "memory": 128
     }
