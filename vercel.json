@@ -2,7 +2,8 @@
   "functions": {
     "main" : {
       "runtime" : "@vercel/python@4.1.0",
-      "memory" : 128
+      "memory" : 128,
+      "includeFiles": "/interactions"
     }
   },
   "routes": [
