@@ -1,10 +1,11 @@
 {
-  "builds": [
+  "functions": 
     {
-      "src": "main.py",
-      "use": "@vercel/python"
-    }
-  ],
+      "main" : {
+        "runtime" : "@vercel/python",
+        "memory" : 128
+      }
+  },
   "routes": [
     {
       "src": "/(.*)",
