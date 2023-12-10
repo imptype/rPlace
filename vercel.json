@@ -1,9 +1,12 @@
 {
+  "rewrites": [
+    { "source": "/api", "destination": "/" }
+  ]
+  ,
   "functions": {
-    "main" : {
-      "runtime" : "@vercel/python@4.1.0",
-      "memory" : 128,
-      "includeFiles": "/interactions"
+    "interactions" : {
+      "runtime": "@vercel/python@4.1.0",
+      "memory": 128
     }
   },
   "routes": [
