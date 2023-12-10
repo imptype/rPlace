@@ -1,18 +1,11 @@
 {
   "rewrites": [
     { "source": "/api", "destination": "/" }
-  ]
-  ,
+  ],
   "functions": {
     "interactions" : {
       "runtime": "@vercel/python@4.1.0",
       "memory": 128
     }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "main.py"
-    }
-  ]
+  }
 }
