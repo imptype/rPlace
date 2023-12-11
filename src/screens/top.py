@@ -4,9 +4,10 @@ import asyncio
 from operator import itemgetter
 from collections import defaultdict
 import discohook
+from PIL import Image
 from . import start
 from ..utils.helpers import get_grid, draw_map, is_local, revert_text, get_guild_data, get_user_data, get_local_id #, convert_text
-from ..utils.constants import BOT_VERSION, CANVAS_SIZE, COLOR_BLURPLE
+from ..utils.constants import BOT_VERSION, CANVAS_SIZE, COLOR_BLURPLE, IMAGE_SIZE
 
 @discohook.button.new('Back To Home', emoji = '⬅️', custom_id = 'back:v{}'.format(BOT_VERSION))
 async def back_button(interaction):
@@ -267,6 +268,8 @@ class TopView(discohook.View):
 
       def blocking():
         im = draw_map(grid, size)
+        if size < CANVAS_SIZE:
+          im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer
