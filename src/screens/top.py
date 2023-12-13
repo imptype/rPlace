@@ -4,6 +4,7 @@ import asyncio
 from operator import itemgetter
 from collections import defaultdict
 import discohook
+from PIL import Image
 from . import start
 from ..utils.helpers import get_grid, draw_map, is_local, revert_text, get_guild_data, get_user_data, get_local_id #, convert_text
 from ..utils.constants import BOT_VERSION, CANVAS_SIZE, COLOR_BLURPLE, IMAGE_SIZE
