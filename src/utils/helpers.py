@@ -11,6 +11,7 @@ import asyncio
 import discohook
 import numpy as np
 from PIL import Image
+from . import constants
 
 # space ' ' is reserved to be delimeter
 ASCII_CHARS = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
@@ -211,8 +212,9 @@ def revert_text(text):
 #   return result
 
 def draw_map(grid, size, startx = 0, starty = 0): # for sections, starty and startx is given
-  a = np.empty((size, size, 3), np.uint8)
-  for i in range(size):
+  sizex, sizey = size # either full canvas size (rect) or zoom size (square|rect)
+  a = np.empty((sizey, sizex, 3), np.uint8)
+  for i in range(sizey):
     y_key = starty + i
     if y_key in grid:
       a[i] = np.vstack(tuple((
@@ -221,10 +223,10 @@ def draw_map(grid, size, startx = 0, starty = 0): # for sections, starty and sta
           if str(x_key) in grid[y_key]
           else np.full((3), 255)
         )
-        for x_key in range(startx, startx + size) # this ensures X order
+        for x_key in range(startx, startx + sizex) # this ensures X order
       )))
     else: # new grids
-      a[i] = np.full((size, 3), 255)
+      a[i] = np.full((sizex, 3), 255)
   return Image.fromarray(a[::-1]) # draw upside down
 
 def to_chunks(lst, n):

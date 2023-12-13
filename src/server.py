@@ -47,5 +47,9 @@ def run():
       raise ValueError('Unhandled action id', data)
     return Response()
 
+  @app.route('/test', methods = ['GET'])
+  async def test(request):
+    await app.db.refresh_logs()    
+
   # Return app object
   return app

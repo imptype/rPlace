@@ -550,7 +550,10 @@ class ExploreView(discohook.View):
         
         im = bim.resize(np.array(bim.size) * n, Image.Resampling.NEAREST)
         im.paste(app.cursor, tuple(np.array(pointer) * n), app.cursor)  # assuming max size doesn't exceed 128, this is fine
-        im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
+
+        big = max(size)
+        factor = IMAGE_SIZE / big
+        im = im.resize((round(size[0] * factor), round(size[1] * factor)), Image.Resampling.NEAREST)
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer

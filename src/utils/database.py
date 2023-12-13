@@ -35,7 +35,10 @@ class Database(Deta):
     if results:
       # extract configs from first record [Y0]
       if results[0]['key'].startswith('000'): # ensure it is Y 0
-        configs['size'] = results[0].pop('size', CANVAS_SIZE)
+        size = results[0].pop('size', CANVAS_SIZE)
+        if isinstance(size, int): # for legacy sizes and default canvas size
+          size = (size, size)
+        configs['size'] = size
         configs['cooldown'] = results[0].pop('cooldown', None)
         configs['allowed'] = results[0].pop('allowed', None)
       for record in results:
@@ -114,7 +117,7 @@ class Database(Deta):
       n = 2000 # max length of discord message, can change to embed later 31x for more characters (62000)
       d = '\n'
       for k in texts:
-        if c + len(texts[k]) + len(d) > n:
+        if c + len(texts[k]) + len(d) * (len(temp)) > n:
           c = len(texts[k])
           chunks.append(temp)
           temp = {k : texts[k]}
@@ -140,11 +143,12 @@ class Database(Deta):
         
         async def handle(chunk):
           # send
-          content = '\n'.join(chunk.values())
+          content = d.join(chunk.values())
           await webhook.send(content)
 
           # delete all log keys in it
-          await asyncio.gather(*[self.logs.delete(k) for k in chunk.keys()])
+          res = await asyncio.gather(*[self.logs.delete(k) for k in chunk.keys()])
+          print(res)
         
         for chunk in rate_chunk:
           await handle(chunk) # this is slower but maintains order
@@ -156,10 +160,11 @@ class Database(Deta):
     await asyncio.gather(self.handle_logs(), self.handle_logs(True)) # global and local separately
 
   async def take_snapshot(self):
-    (grid, _configs) = await self.get_grid()
+    (grid, configs) = await self.get_grid()
+    size = configs.get('size')
 
     def blocking(): # saving is also stuffed here due to blocking
-      im = draw_map(grid, CANVAS_SIZE)
+      im = draw_map(grid, size)
       buffer = io.BytesIO()
       im.save(buffer, 'PNG')
       return buffer

@@ -179,6 +179,7 @@ class TopView(discohook.View):
         raise ValueError('Unhandled TopView.get_rank flag', i)
     
     texts = []
+    print('this size', size)
     empty = 'No data is available yet.'
     if flag:
       if flag == 2:
