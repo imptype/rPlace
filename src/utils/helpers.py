@@ -61,7 +61,7 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
     if not force or not grid_data or refresh_at / 10 ** 7 + app.constants.FETCH_DEBOUNCE < now:
       
       async def defer(): # avoid deferring if we are fast
-        await asyncio.sleep(2 - (time.time() - interaction.created_at)) # 2 seconds passed and still fetching = must defer
+        await asyncio.sleep(1.5 - (time.time() - interaction.created_at)) # 1.5 seconds passed and still fetching = must defer
 
       async def fetch():
         lock = app.locks.get(local_id)
