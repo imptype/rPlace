@@ -85,6 +85,7 @@ def run():
       frame = frame.tb_next
     text += ''.join(trace[-2:])
     print(text)
+    print('Now vs when:', datetime.datetime.fromtimestamp(interaction.created_at), datetime.datetime.utcnow())
 
     # Respond and log
     if interaction.responded:
