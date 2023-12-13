@@ -88,7 +88,7 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
       await app.error_webhook.send('done vs pending {} {}'.format(done, pending))
       
       if defer_task in done: # 2 seconds passed
-        await app.error_webhook.send('ran defer at {}'.format(time.time())
+        await app.error_webhook.send('ran defer at {}'.format(time.time()))
         defer_response = await interaction.response.defer()
       else:
         defer_task.cancel()
