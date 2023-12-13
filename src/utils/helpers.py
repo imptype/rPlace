@@ -61,7 +61,6 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
     if not force or not grid_data or refresh_at / 10 ** 7 + app.constants.FETCH_DEBOUNCE < now:
       
       async def defer(): # avoid deferring if we are fast
-        print('comp', )
         await app.error_webhook.send('diff {} {} {}'.format(time.time(), interaction.created_at, 1.5 - (time.time() - interaction.created_at)))
         await asyncio.sleep(1.5 - (time.time() - interaction.created_at)) # 1.5 seconds passed and still fetching = must defer
 
@@ -86,8 +85,10 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
       fetch_task = loop.create_task(fetch())
 
       done, pending = await asyncio.wait((defer_task, fetch_task), return_when = asyncio.FIRST_COMPLETED)
+      await app.error_webhook.send('done vs pending {} {}'.format(done, pending)
       
       if defer_task in done: # 2 seconds passed
+        await app.error_webhook.send('ran defer at {}'.format(time.time())
         defer_response = await interaction.response.defer()
       else:
         defer_task.cancel()
