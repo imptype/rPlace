@@ -85,7 +85,7 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
       fetch_task = loop.create_task(fetch())
 
       done, pending = await asyncio.wait((defer_task, fetch_task), return_when = asyncio.FIRST_COMPLETED)
-      await app.error_webhook.send('done vs pending {} {}'.format(done, pending)
+      await app.error_webhook.send('done vs pending {} {}'.format(done, pending))
       
       if defer_task in done: # 2 seconds passed
         await app.error_webhook.send('ran defer at {}'.format(time.time())
