@@ -339,7 +339,7 @@ async def step_select(interaction, values):
   data = x, y, zoom, step, color, refresh_at
   await ExploreView(interaction).update(data)
 
-zoom_sizes = (3, 7, 11, 15, 19, 25, 49, 75, 99, 128)
+zoom_sizes = (3, 7, 11, 15, 19, 25, 49, 75, 99, 127)
 zoom_options = [
   discohook.SelectOption('{0}x{0}'.format(i), str(i))
   for i in zoom_sizes

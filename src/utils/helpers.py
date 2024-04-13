@@ -11,6 +11,7 @@ import asyncio
 import discohook
 import numpy as np
 from PIL import Image
+from . import constants
 
 # space ' ' is reserved to be delimeter
 ASCII_CHARS = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
