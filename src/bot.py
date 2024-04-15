@@ -4,6 +4,7 @@ import aiohttp
 import asyncio
 import datetime
 import traceback
+import threading
 import contextlib
 import multiprocessing
 import discohook
@@ -20,22 +21,46 @@ from .screens.top import TopView
 from .screens.settings import SettingsView, resize_modal, cooldown_modal
 
 def run():
-  
+
+  # monkeypatch discohook.https.HTTPClient.session to use different sessions based on current thread id
+  def getter(self):
+    key = threading.get_ident()
+    session = self.sessions.get(key)
+    if not session:
+      self.sessions[key] = session = aiohttp.ClientSession('https://discord.com')
+    return session
+
+  def setter(self, session):
+    print('Closed initial session.')
+    asyncio.ensure_future(session.close(), loop = session.loop)
+
+  discohook.https.HTTPClient.sessions = {}
+  discohook.https.HTTPClient.session = property(getter, setter)
+
+  # monkey patch discohook.Client to use db using the right event loop, no initial session created with app
+  def db(self):
+    key = threading.get_ident()
+    db = self.dbs.get(key)
+    if not db:
+      self.dbs[key] = db = database.Database(app, os.getenv('DB'))
+    return db
+  discohook.Client.dbs = {} # note this is a shared class attribute, will clash if we use multiple clients in the future
+  discohook.Client.db = property(db)
+
   # Lifespan to attach .db attribute, cancel + shutdown is for local testing
   @contextlib.asynccontextmanager
   async def lifespan(app):
-    async with aiohttp.ClientSession('https://discord.com', loop = asyncio.get_running_loop()) as session:
-      await app.http.session.close()
-      app.http.session = session # monkeypatch in async environment for gunicorn
-      async with database.Database(app, os.getenv('DB')) as app.db:
-        try:
-          yield
-        except asyncio.CancelledError:
-          print('Ignoring cancelled error. (CTRL+C)')
-        else:
-          print('Closed without errors.')
-        finally:
-          await app.http.session.close() # close bot session
+    # app.http.session = session # monkeypatch in async environment for gunicorn
+    try:
+      yield
+    except asyncio.CancelledError:
+      print('Ignoring cancelled error. (CTRL+C)')
+    else:
+      print('Closed without errors.')
+    finally:
+      print('Closing sessions:', app.http.sessions, app.dbs)
+      for session in [*app.http.sessions.values(), *app.dbs.values()]:
+        await session.close() # close aiohttp and deta sessions
 
   # Define the bot
   app = discohook.Client(
@@ -115,17 +140,6 @@ def run():
       return
     return ':'.join([name, version])
 
-  # Set before invoke (if lifespan didn't work on serverless instance)
-  @app.before_invoke()
-  async def before_invoke(interaction): # force new sessions every request is the only way to fix it atm
-    if interaction.kind != discohook.InteractionType.ping and not app.test:
-      loop = asyncio.get_event_loop()
-      #if app.http.session._loop != loop:
-      app.http.session = aiohttp.ClientSession('https://discord.com', loop = loop)
-      
-      #if not hasattr(app, 'db'): # lifespan did not work
-      app.db = database.Database(app, os.getenv('DB'), loop = loop)
-
   # Attach helpers and constants, might be helpful
   app.constants = constants
   app.helpers = helpers
@@ -163,10 +177,10 @@ def run():
   app.maintenance = os.getenv('MAIN')
 
   # Load persistent view/components
-  app.load_components(StartView())
-  app.load_components(ExploreView())
-  app.load_components(TopView())
-  app.load_components(SettingsView())
+  app.load_view(StartView())
+  app.load_view(ExploreView())
+  app.load_view(TopView())
+  app.load_view(SettingsView())
   app.active_components[color_modal.custom_id] = color_modal
   app.active_components[jump_modal.custom_id] = jump_modal
   app.active_components[resize_modal.custom_id] = resize_modal
