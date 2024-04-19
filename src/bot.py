@@ -25,16 +25,20 @@ from .screens.settings import SettingsView, resize_modal, cooldown_modal, reset_
 class CustomMiddleware(BaseHTTPMiddleware):
   # new session per threadid/event loop that uses same app instance
   async def dispatch(self, request, call_next):
-    key = threading.get_ident()
-    if not request.app.http.sessions.get(key): # create if one does not exist for that thread id already
-      request.app.http.sessions[key] = aiohttp.ClientSession('https://discord.com')
-    if not request.app.dbs.get(key):
-      request.app.dbs[key] = database.Database(request.app, os.getenv('DB'))
+    if not hasattr(request.app.http, 'initial_session'):
+      request.app.http.initial_session = request.app.http.session
+    request.app.http.session = aiohttp.ClientSession('https://discord.com') # s[key]
+    request.app.http.sessions.add(request.app.http.session)
+    request.app.db = database.Database(request.app, os.getenv('DB')) # s[key]
+    request.app.dbs.add(request.app.db)
     return await call_next(request)
 
 def run():
 
-  # monkeypatch discohook.https.HTTPClient.session to use different sessions based on current thread id
+  discohook.Client.dbs = set()
+  discohook.https.HTTPClient.sessions = set()
+
+  """# monkeypatch discohook.https.HTTPClient.session to use different sessions based on current thread id
   def getter(self):
     key = threading.get_ident()
     session = self.sessions.get(key)
@@ -58,7 +62,7 @@ def run():
     return db
   discohook.Client.dbs = {} # note this is a shared class attribute, will clash if we use multiple clients in the future
   discohook.Client.db = property(db)
-
+  """
   # Lifespan to attach .db attribute, cancel + shutdown is for local testing
   @contextlib.asynccontextmanager
   async def lifespan(app):
@@ -70,9 +74,10 @@ def run():
     else:
       print('Closed without errors.')
     finally:
-      print('Closing sessions:', app.http.sessions, app.dbs)
-      for session in [*app.http.sessions.values(), *app.dbs.values()]:
+      print('Closing sessions:', app.http.sessions, app.dbs, app.http.session)
+      for session in app.http.sessions | app.dbs:
         await session.close() # close aiohttp and deta sessions
+      await getattr(app.http, 'initial_session', app.http.session).close()
 
   # Define the bot
   app = discohook.Client(
