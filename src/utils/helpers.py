@@ -228,7 +228,7 @@ def revert_text(text):
 #   return result
 
 def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and startx is given
-  size = configs.get('size') or CANVAS_SIZE
+  size = configs.get('size') or constants.CANVAS_SIZE
   reset = configs.get('reset') or 0
   a = np.empty((size, size, 3), np.uint8)
   for i in range(size):

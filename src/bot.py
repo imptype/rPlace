@@ -26,9 +26,10 @@ class CustomMiddleware(BaseHTTPMiddleware):
   # new session per threadid/event loop that uses same app instance
   async def dispatch(self, request, call_next):
     key = threading.get_ident()
-    session = request.app.http.sessions.get(key)
-    if not session: # create if one does not exist for that thread id already
-      request.app.http.sessions[key] = session = aiohttp.ClientSession('https://discord.com')
+    if not request.app.http.sessions.get(key): # create if one does not exist for that thread id already
+      request.app.http.sessions[key] = aiohttp.ClientSession('https://discord.com')
+    if not request.app.http.dbs.get(key):
+      request.app.dbs[key] = database.Database(app, os.getenv('DB'))
     return await call_next(request)
 
 def run():
@@ -53,7 +54,7 @@ def run():
     key = threading.get_ident()
     db = self.dbs.get(key)
     if not db:
-      self.dbs[key] = db = database.Database(app, os.getenv('DB'))
+      raise ValueError('db not found, is middleware active?')
     return db
   discohook.Client.dbs = {} # note this is a shared class attribute, will clash if we use multiple clients in the future
   discohook.Client.db = property(db)
