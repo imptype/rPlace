@@ -9,6 +9,8 @@ import contextlib
 import multiprocessing
 import discohook
 from starlette.responses import PlainTextResponse, Response
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from .utils import constants, database, helpers
 from .cogs.ping import ping_command
 from .cogs.help import help_command
@@ -20,6 +22,15 @@ from .screens.explore import ExploreView, color_modal, jump_modal
 from .screens.top import TopView
 from .screens.settings import SettingsView, resize_modal, cooldown_modal, reset_modal
 
+class CustomMiddleware(BaseHTTPMiddleware):
+  # new session per threadid/event loop that uses same app instance
+  async def dispatch(self, request, call_next):
+    key = threading.get_ident()
+    session = request.app.http.sessions.get(key)
+    if not session: # create if one does not exist for that thread id already
+      request.app.http.sessions[key] = session = aiohttp.ClientSession('https://discord.com')
+    return await call_next(request)
+
 def run():
 
   # monkeypatch discohook.https.HTTPClient.session to use different sessions based on current thread id
@@ -27,12 +38,12 @@ def run():
     key = threading.get_ident()
     session = self.sessions.get(key)
     if not session:
-      self.sessions[key] = session = aiohttp.ClientSession('https://discord.com')
+      raise ValueError('session not found, is middleware active?')
     return session
 
   def setter(self, session):
     print('Closed initial session.')
-    asyncio.ensure_future(session.close(), loop = session.loop)
+    asyncio.ensure_future(session.close(), loop = session.loop) # schedule the close
 
   discohook.https.HTTPClient.sessions = {}
   discohook.https.HTTPClient.session = property(getter, setter)
@@ -68,7 +79,8 @@ def run():
     public_key = os.getenv('KEY'),
     token = os.getenv('TOKEN'),
     password = os.getenv('PASS'),
-    lifespan = lifespan
+    lifespan = lifespan,
+    middleware = [Middleware(CustomMiddleware)]
   )
 
   # Attach error handler
