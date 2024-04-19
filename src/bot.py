@@ -126,11 +126,15 @@ def run():
     print('Now vs when:', datetime.datetime.fromtimestamp(interaction.created_at), datetime.datetime.utcnow())
 
     # Respond and log
-    if interaction.responded:
-      respond = interaction.response.followup('Sorry, an error has occured (after responding).')
-    else:
-      respond = interaction.response.send('Sorry, an error has occured.')
-    log = app.error_webhook.send('Test' if app.test else None, file = discohook.File('error.txt', content = text.encode()))
+    content = 'Test ' if app.test else ''
+    try:
+      if interaction.responded:
+        respond = interaction.response.followup('Sorry, an error has occured (after responding).')
+      else:
+        respond = interaction.response.send('Sorry, an error has occured.')
+    except:
+      content += '(failed)'
+    log = app.error_webhook.send(content.strip(), file = discohook.File('error.txt', content = text.encode()))
     await asyncio.gather(respond, log)
 
   # Set custom ID parser
