@@ -29,7 +29,7 @@ class CustomMiddleware(BaseHTTPMiddleware):
     if not request.app.http.sessions.get(key): # create if one does not exist for that thread id already
       request.app.http.sessions[key] = aiohttp.ClientSession('https://discord.com')
     if not request.app.dbs.get(key):
-      request.app.dbs[key] = database.Database(app, os.getenv('DB'))
+      request.app.dbs[key] = database.Database(request.app, os.getenv('DB'))
     return await call_next(request)
 
 def run():
