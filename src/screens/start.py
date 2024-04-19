@@ -74,7 +74,7 @@ class StartView(discohook.View):
       self.embed.set_image('attachment://map.png')
     else:
       def blocking():
-        im = draw_map(grid, size)
+        im = draw_map(grid, configs)
         if size < CANVAS_SIZE:          
           im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
         buffer = io.BytesIO()

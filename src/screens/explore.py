@@ -148,9 +148,10 @@ async def place_button(interaction):
   # tile updated or already the color uses these, cooldown doesn't to save drawing time
   data = x, y, zoom, step, color, refresh_at
   refresh_data = (grid, configs), defer_response, refresh_at, False
-
-  # validate tile is not already the same color, rare case if place button is outdated
-  if tile and tile[0] == color:
+  
+  # validate tile is not already the same color, rare case if place button is outdated, and validate not using same reset
+  reset = configs.get('reset') or 0
+  if tile and tile[0] == color and ((not reset and len(tile) == configs['count']) or tile[-1] == reset):
     return await ExploreView(interaction).update(data, refresh_data, (x, y, color))
 
   # recheck cooldown with updated db cooldown, happens when no cooldown vs newly added cooldown
@@ -202,6 +203,10 @@ async def place_button(interaction):
       tile = [color, timestamp, count, convert_text(interaction.author.id), convert_text(interaction.guild_id)]
     else: # /canvas in DMs
       tile = [color, timestamp, count, convert_text(interaction.author.id)]
+
+  # if reset exists, append that to the end
+  if reset:
+    tile.append(reset)
 
   # update database with new tile or create row if it does not exist
   if row or (not y and configs) : # row exists or if configs exist if y0
@@ -427,10 +432,11 @@ class ExploreView(discohook.View):
           skip_draw = True
 
     pixel = grid.get(y, {}).get(str(x))
+    reset = configs.get('reset') or 0
 
     # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
     thumbnail_url = None
-    if pixel:
+    if pixel and ((not reset and len(pixel) == configs['count']) or pixel[-1] == reset): # dont show data if pixels placed before reset
       place_disabled = color == pixel[0] # selecting same color
 
       text = '🎨 #{:06x}'.format(pixel[0])
@@ -524,7 +530,9 @@ class ExploreView(discohook.View):
       # draw canvas
       app = self.interaction.client
       def blocking():
-        bim = draw_map(grid, zoom, startx, starty)
+        sconfigs = configs.copy()
+        sconfigs['size'] = zoom # needed for the "reset" attribute
+        bim = draw_map(grid, sconfigs, startx, starty)
 
         # draw cursor if not cached
         n = 8 # cursor is 8px in size

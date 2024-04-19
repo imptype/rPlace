@@ -38,6 +38,8 @@ class Database(Deta):
         configs['size'] = results[0].pop('size', CANVAS_SIZE)
         configs['cooldown'] = results[0].pop('cooldown', None)
         configs['allowed'] = results[0].pop('allowed', None)
+        configs['reset'] = results[0].pop('reset', 0)
+        configs['spawn'] = results[0].pop('spawn', None)
       for record in results:
         y = record['key'].split(' ')[0] # incase local id exists, it just gets the Y value
         y = int(''.join([y[:-1].lstrip('0'), y[-1]])) # convert 000, 020 to 0, 20
@@ -156,10 +158,10 @@ class Database(Deta):
     await asyncio.gather(self.handle_logs(), self.handle_logs(True)) # global and local separately
 
   async def take_snapshot(self):
-    (grid, _configs) = await self.get_grid()
+    (grid, configs) = await self.get_grid()
 
     def blocking(): # saving is also stuffed here due to blocking
-      im = draw_map(grid, CANVAS_SIZE)
+      im = draw_map(grid, configs)
       buffer = io.BytesIO()
       im.save(buffer, 'PNG')
       return buffer

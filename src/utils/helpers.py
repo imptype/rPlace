@@ -49,6 +49,21 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
     app = interaction.client
     local_id = get_local_id(interaction)
 
+  if is_local(interaction): # /local-canvas
+    if interaction.guild_id: # /local-canvas in guild
+      tile_count = 4
+      #tile = [color, timestamp, count, convert_text(interaction.author.id)]
+    else: # /local-canvas in DMs
+      tile_count = 3
+      #tile = [color, timestamp, count]
+  else: # /canvas
+    if interaction.guild_id: # /canvas in guild
+      tile_count = 5
+      #tile = [color, timestamp, count, convert_text(interaction.author.id), convert_text(interaction.guild_id)]
+    else: # /canvas in DMs
+      tile_count = 4
+      #tile = [color, timestamp, count, convert_text(interaction.author.id)]
+
   cache = app.pixels
   refresh_cache = app.refreshes
 
@@ -75,6 +90,7 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
           if not grid_data or refresh_cache[local_id] / 10 ** 7 + app.constants.FETCH_DEBOUNCE < time.time(): 
             cache[local_id] = grid_data = await app.db.get_grid(local_id)
             refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
+            grid_data[1]['count'] = tile_count # edit configs, put number of expected values in each tile in configs for reset attribute
         finally:
           lock.release()
 
@@ -211,21 +227,30 @@ def revert_text(text):
       
 #   return result
 
-def draw_map(grid, size, startx = 0, starty = 0): # for sections, starty and startx is given
+def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and startx is given
+  size = configs.get('size') or CANVAS_SIZE
+  reset = configs.get('reset') or 0
   a = np.empty((size, size, 3), np.uint8)
   for i in range(size):
     y_key = starty + i
     if y_key in grid:
       a[i] = np.vstack(tuple((
         (
-          np.array(((grid[y_key][str(x_key)][0] >> 16) & 255, (grid[y_key][str(x_key)][0] >> 8) & 255, grid[y_key][str(x_key)][0] & 255))
-          if str(x_key) in grid[y_key]
-          else np.full((3), 255)
+          np.array(((grid[y_key][str(x_key)][0] >> 16) & 255, (grid[y_key][str(x_key)][0] >> 8) & 255, grid[y_key][str(x_key)][0] & 255), np.uint8)
+          if str(x_key) in grid[y_key] and (
+            (
+              not reset and 
+              len(grid[y_key][str(x_key)]) == configs['count'] # has never been reset
+            ) or (
+              grid[y_key][str(x_key)][-1] == reset # reset is equals to reset count, which is last value in tile
+            )
+          )
+          else np.full((3), 255, np.uint8)
         )
         for x_key in range(startx, startx + size) # this ensures X order
-      )))
+      )), dtype = np.uint8)
     else: # new grids
-      a[i] = np.full((size, 3), 255)
+      a[i] = np.full((size, 3), 255, np.uint8)
   return Image.fromarray(a[::-1]) # draw upside down
 
 def to_chunks(lst, n):

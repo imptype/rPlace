@@ -26,7 +26,7 @@ async def resize_modal(interaction, size):
 
   # validate timestamp
   try:
-    timestamp, old_size, _cooldown, _allowed, _refresh_at = explore.get_values(interaction) # message values
+    timestamp, old_size, _cooldown, _reset, _refresh_at = explore.get_values(interaction) # message values
     assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Resize Modal has expired!', ephemeral = True)
@@ -74,12 +74,12 @@ async def resize_button(interaction):
   await interaction.response.send_modal(modal)
 
 cooldown_field = discohook.TextInput('Cooldown Seconds', 'cooldown', hint = 'A number in the range of 0-86400', min_length = 1, max_length = 5, required = True)
-@discohook.modal.new('Resize Modal', fields = [], custom_id = 'admin_cooldown_modal:v{}'.format(BOT_VERSION))
+@discohook.modal.new('Cooldown Modal', fields = [], custom_id = 'admin_cooldown_modal:v{}'.format(BOT_VERSION))
 async def cooldown_modal(interaction, cooldown):
 
   # validate timestamp
   try:
-    timestamp, _size, old_cooldown, _allowed, refresh_at = explore.get_values(interaction) # message values
+    timestamp, _size, old_cooldown, _reset, refresh_at = explore.get_values(interaction) # message values
     assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Cooldown Modal has expired!', ephemeral = True)
@@ -128,9 +128,47 @@ async def cooldown_button(interaction):
   modal.rows.append(cooldown_field.to_dict())
   await interaction.response.send_modal(modal)
 
-"""@discohook.button.new('Set Allowed Role', emoji = '👤', custom_id = 'admin_role:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
-async def allowed_button(interaction):
-  await interaction.response.send('click set allowed role')"""
+reset_field = discohook.TextInput('Type "RESET" to confirm', 'text', hint = 'RESET', min_length = 5, max_length = 5, required = True)
+@discohook.modal.new('Reset Modal', fields = [], custom_id = 'admin_reset_modal:v{}'.format(BOT_VERSION))
+async def reset_modal(interaction, text):
+
+  # validate timestamp
+  try:
+    timestamp, _size, _cooldown, reset, refresh_at = explore.get_values(interaction) # message values
+    assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
+  except: # index error = wrong screen, assert error = wrong timestamp
+    return await interaction.response.send('The Reset Modal has expired!', ephemeral = True)
+
+  # validate input
+  if text != 'RESET':
+    return await interaction.response.send('Wrong input!', ephemeral = True)
+
+  # fetch up to date grid for configs
+  (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
+  reset = configs.get('reset') or 0 # should be None if never used or 0 if reset back
+
+  reset += 1
+
+  # update if y0 exists, extremely rare to error and autofixes on next move
+  exists = 0 in grid
+  await interaction.client.db.update_configs(local_id, exists, 'reset', reset)
+  configs['reset'] = reset
+
+  # skip drawing if old refresh is more up to date / wont happen because we force fetched
+  skip_draw = False #refresh_at >= new_refresh_at
+
+  # all good, update view
+  refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
+  await SettingsView(interaction).update(refresh_data)
+
+@discohook.button.new('Reset Canvas', emoji = '🧻', custom_id = 'admin_reset:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+async def reset_button(interaction):
+  modal = discohook.Modal(
+    reset_modal.title,
+    custom_id = '{}:{}'.format(reset_modal.custom_id, explore.get_values(interaction)[0])
+  )
+  modal.rows.append(reset_field.to_dict())
+  await interaction.response.send_modal(modal)
 
 class SettingsView(discohook.View):
   def __init__(self, interaction = None):
@@ -138,7 +176,7 @@ class SettingsView(discohook.View):
     if interaction:
       self.interaction = interaction
     else: # persistent
-      self.add_buttons(back_button, resize_button, cooldown_button)#, allowed_button)
+      self.add_buttons(back_button, resize_button, cooldown_button, reset_button)
 
   async def setup(self, refresh_data): # ainit
 
@@ -151,10 +189,10 @@ class SettingsView(discohook.View):
       refresh_at = int(self.interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[-1])
       skip_draw = refresh_at >= new_refresh_at
 
+    # or outside, if config was edited, these are default values
     size = configs.get('size') or CANVAS_SIZE
     cooldown = configs.get('cooldown') or 0
-    #allowed = configs.get('allowed')
-    allowed = 0 # unused for now
+    reset = configs.get('reset') or 0
 
     self.embed = discohook.Embed(
       'Pixel Canvas Local Settings',
@@ -166,9 +204,9 @@ class SettingsView(discohook.View):
         '',
         '**[2] Setting a cooldown (Current: `{} seconds`)**'.format(cooldown),
         'Set a cooldown between 0 seconds to 24 hours. A cooldown means if someone placed a pixel, they will have to wait that amount of time before they can place another one again.',
-        #'',
-        #'**[3] Set allowed/whitelisted role (Current: {})**'.format('<@&{}>'.format(allowed) if allowed else 'N/A'),
-        #'If you set this, only people with this role can actually place pixels. This is useful if you want people to be able to spectate but not be able to overwrite pixels.'
+        '',
+        '**[3] Reset Canvas (Reset: `{} times`)**'.format(reset),
+        'Resets the canvas by erasing all pixel data. This action is irreversible. You should only use this if you want to start over.'
       ]),
       color = COLOR_RED
     )
@@ -178,7 +216,7 @@ class SettingsView(discohook.View):
     else:
 
       def blocking():
-        im = draw_map(grid, size)
+        im = draw_map(grid, configs)
         if size < CANVAS_SIZE:
           im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
         buffer = io.BytesIO()
@@ -193,10 +231,10 @@ class SettingsView(discohook.View):
     dynamic_back_button = discohook.Button(
       back_button.label,
       emoji = back_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size, cooldown, allowed if allowed else 0, new_refresh_at)
+      custom_id = '{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size, cooldown, reset, new_refresh_at)
     )
 
-    self.add_buttons(dynamic_back_button, resize_button, cooldown_button)#, allowed_button)
+    self.add_buttons(dynamic_back_button, resize_button, cooldown_button, reset_button)
   
   async def update(self, refresh_data = None):
     await self.setup(refresh_data)

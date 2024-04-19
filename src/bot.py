@@ -18,7 +18,7 @@ from .cogs.test import test_command
 from .screens.start import StartView
 from .screens.explore import ExploreView, color_modal, jump_modal
 from .screens.top import TopView
-from .screens.settings import SettingsView, resize_modal, cooldown_modal
+from .screens.settings import SettingsView, resize_modal, cooldown_modal, reset_modal
 
 def run():
 
@@ -185,6 +185,7 @@ def run():
   app.active_components[jump_modal.custom_id] = jump_modal
   app.active_components[resize_modal.custom_id] = resize_modal
   app.active_components[cooldown_modal.custom_id] = cooldown_modal
+  app.active_components[reset_modal.custom_id] = reset_modal
 
   # Add commands
   commands = (
