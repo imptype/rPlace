@@ -228,7 +228,7 @@ def revert_text(text):
 #   return result
 
 def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and startx is given
-  size = configs.get('size') or constants.CANVAS_SIZE
+  size = configs.get('size') or constants.CANVAS_SIZE # these sould be dict[key] db should return a certainty
   reset = configs.get('reset') or 0
   a = np.empty((size[1], size[0], 3), np.uint8)
   for i in range(size[1]):
@@ -251,7 +251,9 @@ def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and 
       )), dtype = np.uint8)
     else: # new grids
       a[i] = np.full((size[0], 3), 255, np.uint8)
-  return Image.fromarray(a[::-1]) # draw upside down
+  flip = configs.get('flip') or 0
+  n = (int(flip) * 2) - 1 # whether to draw upside down or not, if they enabled the setting
+  return Image.fromarray(a[::n])
 
 def to_chunks(lst, n):
   return [lst[i:i + n] for i in range(0, len(lst), n)]

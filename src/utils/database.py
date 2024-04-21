@@ -39,9 +39,10 @@ class Database(Deta):
         if isinstance(configs['size'], int): # legacy sizes
           configs['size'] = (configs['size'], configs['size'])
         configs['cooldown'] = results[0].pop('cooldown', None)
-        configs['allowed'] = results[0].pop('allowed', None)
+        #configs['allowed'] = results[0].pop('allowed', None)
         configs['reset'] = results[0].pop('reset', 0)
-        configs['spawn'] = results[0].pop('spawn', None)
+        #configs['spawn'] = results[0].pop('spawn', None)
+        configs['flip'] = results[0].pop('flip', 0)
       for record in results:
         y = record['key'].split(' ')[0] # incase local id exists, it just gets the Y value
         y = int(''.join([y[:-1].lstrip('0'), y[-1]])) # convert 000, 020 to 0, 20

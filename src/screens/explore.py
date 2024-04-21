@@ -147,6 +147,12 @@ async def place_button(interaction):
   xborder = size[0] - 1
   yborder = size[1] - 1
 
+  # if flip enabled, affix y
+  flip = configs.get('flip') or 0
+  original_y = y # used for after placing, get the correct position even when flipped
+  if flip:
+    y = yborder - y
+
   # if place is outside of border, just do move instead, race condition when u resize grid size
   if x < 0 or x > xborder or y < 0 or y > yborder or zoom[0] > size[0] or zoom[1] > size[1]:
     return await move(interaction, 0, 0) # magnitude doesnt matter
@@ -161,7 +167,7 @@ async def place_button(interaction):
     tile = None
 
   # tile updated or already the color uses these, cooldown doesn't to save drawing time
-  data = x, y, zoom, step, color, refresh_at
+  data = x, original_y, zoom, step, color, refresh_at
   refresh_data = (grid, configs), defer_response, refresh_at, False
   
   # validate tile is not already the same color, rare case if place button is outdated, and validate not using same reset
@@ -452,7 +458,19 @@ class ExploreView(discohook.View):
         else:
           skip_draw = True
 
-    pixel = grid.get(y, {}).get(str(x))
+    flip = configs.get('flip') or 0
+    size = configs.get('size') or CANVAS_SIZE # can sneakily be None, unreliant with db
+    xborder = size[0] - 1
+    yborder = size[1] - 1
+    if not data: # only if canvas started:
+      if flip:
+        y = yborder # start from top instead of at 0
+    if flip:
+      vy = yborder - y
+    else:
+      vy = y # visually y, not same for y used in border checks, only used to get the selected pixel
+    
+    pixel = grid.get(vy, {}).get(str(x))
     reset = configs.get('reset') or 0
 
     # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
@@ -509,7 +527,7 @@ class ExploreView(discohook.View):
         text = 'You haven\'t painted here yet.'
 
     self.embed = discohook.Embed(
-      'Selecting Tile ({}, {})'.format(x, y),
+      'Selecting Tile ({}, {})'.format(x, vy),
       description = text,
       color = COLOR_RED if extra else COLOR_BLURPLE
     )
@@ -518,15 +536,12 @@ class ExploreView(discohook.View):
     if thumbnail_url:
       self.embed.set_thumbnail(thumbnail_url)
 
-    size = configs.get('size') or CANVAS_SIZE # can sneakily be None
     if not data: # not sure if this is needed here
       if zoom[0] > size[0]:
         zoom[0] = size[0] # fix starter zoom
       if zoom[1] > size[1]:
         zoom[1] = size[1]
     cooldown = configs.get('cooldown') or 0 # same here
-    xborder = size[0] - 1
-    yborder = size[1] - 1
 
     if skip_draw: # saves redrawing pointlessly if it hasn't refreshed
       self.embed.set_image('attachment://map.png')

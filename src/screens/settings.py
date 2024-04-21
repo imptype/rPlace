@@ -183,13 +183,33 @@ async def reset_button(interaction):
   modal.rows.append(reset_field.to_dict())
   await interaction.response.send_modal(modal)
 
+@discohook.button.new('Flip Canvas Y-Axis', emoji = '↕️', custom_id = 'admin_flip:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+async def flip_button(interaction):
+
+  # fetch up to date grid for configs
+  (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
+  flip = configs.get('flip') or 0
+  flip = int(not flip)
+
+  # update if y0 exists, extremely rare to error and autofixes on next move, can be spammed a lot, add guild-based debounce in future
+  exists = 0 in grid
+  await interaction.client.db.update_configs(local_id, exists, 'flip', flip)
+  configs['flip'] = flip
+
+  # skip drawing if old refresh is more up to date / wont happen because we force fetched/flipped
+  skip_draw = False #refresh_at >= new_refresh_at
+
+  # all good, update view
+  refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
+  await SettingsView(interaction).update(refresh_data)
+
 class SettingsView(discohook.View):
   def __init__(self, interaction = None):
     super().__init__()
     if interaction:
       self.interaction = interaction
     else: # persistent
-      self.add_buttons(back_button, resize_button, cooldown_button, reset_button)
+      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button)
 
   async def setup(self, refresh_data): # ainit
 
@@ -206,6 +226,7 @@ class SettingsView(discohook.View):
     size = configs.get('size') or CANVAS_SIZE
     cooldown = configs.get('cooldown') or 0
     reset = configs.get('reset') or 0
+    flip = configs.get('flip') or 0
 
     self.embed = discohook.Embed(
       'Pixel Canvas Local Settings',
@@ -219,7 +240,10 @@ class SettingsView(discohook.View):
         'Set a cooldown between 0 seconds to 24 hours. A cooldown means if someone placed a pixel, they will have to wait that amount of time before they can place another one again.',
         '',
         '**[3] Reset Canvas (Reset: `{} times`)**'.format(reset),
-        'Resets the canvas by erasing all pixel data. This action is irreversible. You should only use this if you want to start over.'
+        'Resets the canvas by erasing all pixel data. This action is irreversible. You should only use this if you want to start over.',
+        '',
+        '**[4] Flip Y-Axis (Current: `{}`)**'.format(bool(flip)),
+        'Toggle to flip the canvas so the Y axis starts from the top instead of the bottom. Any existing pixel data will be flipped along with it.'       
       ]),
       color = COLOR_RED
     )
@@ -250,6 +274,7 @@ class SettingsView(discohook.View):
     )
 
     self.add_buttons(dynamic_back_button, resize_button, cooldown_button, reset_button)
+    self.add_buttons(flip_button)
   
   async def update(self, refresh_data = None):
     await self.setup(refresh_data)
