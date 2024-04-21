@@ -9,8 +9,18 @@ from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSIO
 from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username, get_local_id#, encrypt_text
 
 def get_values(interaction):
-  custom_id = interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')
-  return tuple(map(int, custom_id[2:7])) + tuple(map(int, custom_id[8].split('_'))) + tuple(map(int, custom_id[8:]))
+  c = interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')
+  return (
+    int(c[2]), # x
+    int(c[3]), # y
+    list(map(int, c[4].split('_'))), # zoom xy, list because values can be adjusted
+    int(c[5]), # step
+    int(c[6]), # color
+    tuple(map(int, c[7].split('_'))), # size xy
+    int(c[8]), # cooldown
+    int(c[9]), # refresh at
+    int(c[10]), # timestamp
+  )
 
 async def move(interaction, dx, dy):
   x, y, zoom, step, color, osize, _cooldown, refresh_at, _timestamp = get_values(interaction)
@@ -39,10 +49,11 @@ async def move(interaction, dx, dy):
   elif y > yborder:
     y = yborder
 
-  # check with zoom too
-  small_size = min(size)
-  if zoom > small_size:
-    zoom = small_size
+  # apply fix for zoom if zoom is bigger than canvas size
+  if zoom[0] > size[0]:
+    zoom[0] = size[0]
+  if zoom[1] > size[1]:
+    zoom[1] = size[1]
 
   # reuse zoom, step and color in new data
   data = x, y, zoom, step, color, refresh_at
@@ -137,7 +148,7 @@ async def place_button(interaction):
   yborder = size[1] - 1
 
   # if place is outside of border, just do move instead, race condition when u resize grid size
-  if x < 0 or x > xborder or y < 0 or y > yborder or zoom > min(size):
+  if x < 0 or x > xborder or y < 0 or y > yborder or zoom[0] > size[0] or zoom[1] > size[1]:
     return await move(interaction, 0, 0) # magnitude doesnt matter
 
   row = grid.get(y)
@@ -297,6 +308,7 @@ async def jump_button(interaction):
   # we use cached size here because modal response time is strictly 3 seconds
   # and we partially validate size on modal callback and it's forced when you attempt to place anyway
   _x, _y, _zoom, _step, _color, size, _cooldown, _refresh_at, timestamp = get_values(interaction)
+  print('t', get_values(interaction))
   borders = (size[0] - 1, size[1] - 1) # xborder, yborder
 
   modal = discohook.Modal(
@@ -352,17 +364,17 @@ async def step_select(interaction, values):
 
 zoom_sizes = (3, 7, 11, 15, 19, 25, 49, 75, 99, 127)
 zoom_options = [
-  discohook.SelectOption('{0}x{0}'.format(i), str(i))
+  discohook.SelectOption('{0}x{0}'.format(i), '{}_{}'.format(i, i))
   for i in zoom_sizes
 ]
 @discohook.select.text(zoom_options, placeholder = 'zoom_select', custom_id = 'zoom_select:v{}'.format(BOT_VERSION))
 async def zoom_select(interaction, values):
   x, y, old_zoom, step, color, _size, _cooldown, refresh_at, _timestamp = get_values(interaction)
-  zoom = int(values[0])
+  zoom = list(map(int, values[0].split('_')))
   
   # validate new zoom
   if zoom == old_zoom:
-    return await interaction.response.send('Zoom `{0}x{0}` is already selected!'.format(zoom), ephemeral = True)
+    return await interaction.response.send('Zoom `{}x{}` is already selected!'.format(*zoom), ephemeral = True)
 
   # get cached grid size before we draw it to see if it goes beyond border
   grid_data, defer_response, new_refresh_at = await get_grid(interaction)
@@ -372,17 +384,18 @@ async def zoom_select(interaction, values):
   yborder = size[1] - 1
 
   # fix if it goes beyond new borders
-  small_size = min(size)
-  if zoom > small_size: # drawing would be out of bounds otherwise
-    zoom = small_size # no need to ensure odd because section draw is smart
-  
+  if zoom[0] > size[0]: # drawing would be out of bounds otherwise
+    zoom[0] = size[0] # no need to ensure odd because section draw is smart
+  if zoom[1] > size[1]:
+    zoom[1] = size[1]
+
   # validate new zoom again, rare
   if zoom == old_zoom:
     if defer_response:
       method = defer_response.send
     else:
       method = interaction.response.send
-    return await method('Zoom `{0}x{0}` is already selected!!'.format(zoom), ephemeral = True)
+    return await method('Zoom `{}x{}` is already selected!!'.format(*zoom), ephemeral = True)
   
   if x < 0:
     x = 0
@@ -423,13 +436,13 @@ class ExploreView(discohook.View):
     else: # default, first move
       x = 0
       y = 0
-      zoom = 11
+      zoom = [11, 11]
       step = 1
       color = 0
     timestamp = int(time.time() * 10 ** 7) # create new timestamp
       
     if refresh_data: # from button place, movement (border checks), jump modal (border checks), zoom select (update border checks before redraw)
-      (grid, configs), self.defer_response, refresh_at, skip_draw = refresh_data # refresh comaprison is skipped, see below, because we just updated grid from place
+      (grid, configs), self.defer_response, refresh_at, skip_draw = refresh_data # refresh comparison is skipped, see below, because we just updated grid from place
     else:
       (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
       skip_draw = False
@@ -506,10 +519,11 @@ class ExploreView(discohook.View):
       self.embed.set_thumbnail(thumbnail_url)
 
     size = configs.get('size') or CANVAS_SIZE # can sneakily be None
-    small_size = min(size)
     if not data: # not sure if this is needed here
-      if zoom > small_size:
-        zoom = small_size # fix starter zoom
+      if zoom[0] > size[0]:
+        zoom[0] = size[0] # fix starter zoom
+      if zoom[1] > size[1]:
+        zoom[1] = size[1]
     cooldown = configs.get('cooldown') or 0 # same here
     xborder = size[0] - 1
     yborder = size[1] - 1
@@ -518,30 +532,32 @@ class ExploreView(discohook.View):
       self.embed.set_image('attachment://map.png')
     else:
       # calculate pointer cursor
-      radius = int(zoom/2)
-      pointer = [radius] * 2
+      radiusx = zoom[0]//2
+      radiusy = zoom[1]//2
+      
+      pointer = [radiusx, radiusy]
 
-      startx = x - radius
+      startx = x - radiusx
       if startx < 0:
         startx = 0
         pointer[0] = x
-      elif x + radius > xborder:
-        startx = size[0] - zoom
-        pointer[0] = zoom - (size[0] - x)
+      elif x + radiusx > xborder:
+        startx = size[0] - zoom[0]
+        pointer[0] = zoom[0] - (size[0] - x)
 
-      starty = y - radius
+      starty = y - radiusy
       if starty < 0:
         starty = 0
-        pointer[1] = zoom - 1 - y
-      elif y + radius > yborder:
-        starty = size[1] - zoom
+        pointer[1] = zoom[1] - 1 - y
+      elif y + radiusy > yborder:
+        starty = size[1] - zoom[1]
         pointer[1] = yborder - y
 
       # draw canvas
       app = self.interaction.client
       def blocking():
         sconfigs = configs.copy()
-        sconfigs['size'] = (zoom, zoom) # needed for the "reset" attribute
+        sconfigs['size'] = zoom # needed for the "reset" attribute
         bim = draw_map(grid, sconfigs, startx, starty)
 
         # draw cursor if not cached
@@ -568,7 +584,11 @@ class ExploreView(discohook.View):
         
         im = bim.resize(np.array(bim.size) * n, Image.Resampling.NEAREST)
         im.paste(app.cursor, tuple(np.array(pointer) * n), app.cursor)  # assuming max size doesn't exceed 128, this is fine
-        im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
+
+        factor = IMAGE_SIZE // max(size)
+        resize = (zoom[0] * factor, zoom[1] * factor)
+        if size != resize:
+          im = im.resize(resize, Image.Resampling.NEAREST)        
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer
@@ -580,7 +600,7 @@ class ExploreView(discohook.View):
 
     dynamic_upleft_button = discohook.Button(
       emoji = upleft_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(upleft_button.custom_id, x, y, zoom, step, color, '_'.join(map(str, size)), cooldown, refresh_at, timestamp),
+      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(upleft_button.custom_id, x, y, '_'.join(map(str, zoom)), step, color, '_'.join(map(str, size)), cooldown, refresh_at, timestamp),
       disabled = not x or y == yborder
     )
     
@@ -605,7 +625,7 @@ class ExploreView(discohook.View):
     dynamic_right_button = discohook.Button(
       emoji = right_button.emoji,
       custom_id = right_button.custom_id + ':',
-      disabled = x == yborder
+      disabled = x == xborder
     )
         
     dynamic_downleft_button = discohook.Button(
@@ -644,26 +664,37 @@ class ExploreView(discohook.View):
       custom_id = step_select.custom_id + ':'      
     )
     options = []
+    max_size = max(size)
     for option in step_select.options:
-      if int(option.value) < small_size:
+      if int(option.value) < max_size:
         options.append(option)
       else:
-        options.append(discohook.SelectOption(str(small_size), str(small_size)))
+        options.append(discohook.SelectOption(str(max_size), str(max_size)))
         break
     dynamic_step_select.options = options
 
     dynamic_zoom_select = discohook.Select(
       discohook.SelectType.text,
-      placeholder = 'Zoom: {0}x{0}'.format(zoom),
+      placeholder = 'Zoom: {}x{}'.format(*zoom),
       custom_id = zoom_select.custom_id + ':'      
     )
     options = []
+    small_size = min(size)
+    small_index = int(size[0] > size[1])
     for option in zoom_select.options:
-      if int(option.value) < small_size:
+      zoom_value = int(option.value.split('_')[0])
+      if zoom_value < small_size: # add square
         options.append(option)
       else:
-        options.append(discohook.SelectOption('{0}x{0}'.format(small_size), str(small_size)))
-        break
+        zoom_values = (
+          small_index and zoom_value or size[0],
+          small_index and size[1] or zoom_value
+        )
+        if zoom_value < max_size:
+          options.append(discohook.SelectOption('{}x{}'.format(*zoom_values), '_'.join(map(str, zoom_values))))
+        else:
+          options.append(discohook.SelectOption('{}x{}'.format(*size), '_'.join(map(str, size))))
+          break
     dynamic_zoom_select.options = options
       
     self.add_buttons(dynamic_upleft_button, dynamic_up_button, dynamic_upright_button, dynamic_color_button)
