@@ -184,7 +184,7 @@ def run():
   app.refreshes = {} # local_id : int(timestamp) # indicates whether canvas was refreshed or not
   app.tops = {} # local_id : (top data), saves processing and currently has delays in updating
   app.locks = {} # local_id : asyncio.Lock, reload map one at a time
-  app.cooldowns = {} # local_id:user_id : ends_at timestamp
+  app.cooldowns = {} # local_id : user_id : ends_at timestamp
 
   # Set bot started at timestamp
   app.started_at = datetime.datetime.utcnow()

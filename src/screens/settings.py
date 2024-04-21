@@ -7,6 +7,9 @@ from . import start, explore
 from ..utils.helpers import draw_map, get_grid
 from ..utils.constants import BOT_VERSION, COLOR_RED, CANVAS_SIZE, IMAGE_SIZE
 
+def get_values(interaction):
+  return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
+
 @discohook.button.new('Back To Home', emoji = '⬅️', custom_id = 'admin_back:v{}'.format(BOT_VERSION))
 async def back_button(interaction):
 
@@ -20,40 +23,49 @@ async def back_button(interaction):
   refresh_data = grid_data, defer_response, new_refresh_at, skip_draw
   await start.StartView(interaction).update(refresh_data)
 
-resize_field = discohook.TextInput('Size', 'size', hint = 'A number in the range of 3-1000', min_length = 1, max_length = 4, required = True)
+resize_fields = [
+  discohook.TextInput('X', 'x', hint = 'A number in the range of 3-1000', min_length = 1, max_length = 4, required = True),
+  discohook.TextInput('Y', 'y', hint = 'A number in the range of 3-1000', min_length = 1, max_length = 4, required = True)
+]
 @discohook.modal.new('Resize Modal', fields = [], custom_id = 'admin_resize_modal:v{}'.format(BOT_VERSION))
-async def resize_modal(interaction, size):
+async def resize_modal(interaction, x, y):
 
   # validate timestamp
   try:
-    timestamp, old_size, _cooldown, _reset, _refresh_at = explore.get_values(interaction) # message values
+    timestamp, old_sizex, old_sizey, _cooldown, _reset, _refresh_at = get_values(interaction) # message values
     assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Resize Modal has expired!', ephemeral = True)
 
   # validate integers, accepts numbers from other languages
-  if not size.isdecimal():
-    return await interaction.response.send('Size `{}` is not a number!'.format(size), ephemeral = True)
-  size = int(size)
+  if not x.isdecimal():
+    return await interaction.response.send('Size X `{}` is not a number!'.format(x), ephemeral = True)
+  elif not y.isdecimal():
+    return await interaction.response.send('Size Y `{}` is not a number!'.format(y), ephemeral = True)
+  x = int(x)
+  y = int(y)
 
   # validate new size prevent 2 request
-  if size == old_size:
-    return await interaction.response.send('The canvas is already the size `{}`! Reopen the menu if you think this message outdated.'.format(size), ephemeral = True)  
+  if x == old_sizex and y == old_sizey:
+    return await interaction.response.send('The canvas is already the size `{}x{}`! Reopen the menu if you think this message outdated.'.format(x, y), ephemeral = True)  
   
   # validate the range
-  if not 3 <= size <= 1000:
-    return await interaction.response.send('Size `{}` is out of range!'.format(size), ephemeral = True)
+  if not 3 <= x <= 1000:
+    return await interaction.response.send('Size X `{}` is out of range!'.format(x), ephemeral = True)
+  elif not 3 <= y <= 1000:
+    return await interaction.response.send('Size Y `{}` is out of range!'.format(y), ephemeral = True)
 
   # fetch up to date grid
   (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True)
-  old_size = configs.get('size') or CANVAS_SIZE
+  old_sizex, old_sizey = configs.get('size') or CANVAS_SIZE
 
   # validate new size again, prevent 1 request
-  if size == old_size:
-    return await interaction.response.send('The canvas is already the size `{}`!! Reopen the menu if you think this message outdated.'.format(size), ephemeral = True)  
+  if x == old_sizex and y == old_sizey:
+    return await interaction.response.send('The canvas is already the size `{}x{}`!! Reopen the menu if you think this message outdated.'.format(x, y), ephemeral = True)  
   
   # update if y0 exists, extremely rare to error and autofixes on next move
   exists = 0 in grid
+  size = [x, y] # explicitly be list not tuple, despite being read only, to be consistent with db return value
   await interaction.client.db.update_configs(local_id, exists, 'size', size)
   configs['size'] = size  
 
@@ -68,9 +80,10 @@ async def resize_modal(interaction, size):
 async def resize_button(interaction):
   modal = discohook.Modal(
     resize_modal.title,
-    custom_id = '{}:{}'.format(resize_modal.custom_id, explore.get_values(interaction)[0])
+    custom_id = '{}:{}'.format(resize_modal.custom_id, get_values(interaction)[0])
   )
-  modal.rows.append(resize_field.to_dict())
+  for field in resize_fields:    
+    modal.rows.append(field.to_dict())
   await interaction.response.send_modal(modal)
 
 cooldown_field = discohook.TextInput('Cooldown Seconds', 'cooldown', hint = 'A number in the range of 0-86400', min_length = 1, max_length = 5, required = True)
@@ -79,7 +92,7 @@ async def cooldown_modal(interaction, cooldown):
 
   # validate timestamp
   try:
-    timestamp, _size, old_cooldown, _reset, refresh_at = explore.get_values(interaction) # message values
+    timestamp, _sizex, _sizey, old_cooldown, _reset, _refresh_at = get_values(interaction) # message values
     assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Cooldown Modal has expired!', ephemeral = True)
@@ -101,9 +114,9 @@ async def cooldown_modal(interaction, cooldown):
   (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
   old_cooldown = configs.get('cooldown') or 0 # should be None if never used or 0 if reset back
 
-  # validate new size again, prevent 1 request
+  # validate new size again, prevent 1 request, can be spammed but unlikely
   if cooldown == old_cooldown:
-    return await interaction.response.send('The canvas is already the size `{}`!! Reopen the menu if you think this message outdated.'.format(cooldown), ephemeral = True)  
+    return await interaction.response.send('The canvas is already the cooldown `{}`!! Reopen the menu if you think this message outdated.'.format(cooldown), ephemeral = True)  
   
   # update if y0 exists, extremely rare to error and autofixes on next move
   exists = 0 in grid
@@ -123,7 +136,7 @@ async def cooldown_button(interaction):
     return await interaction.response.send('Cooldown setting is not available for DM canvases.', ephemeral = True)
   modal = discohook.Modal(
     cooldown_modal.title,
-    custom_id = '{}:{}'.format(cooldown_modal.custom_id, explore.get_values(interaction)[0])
+    custom_id = '{}:{}'.format(cooldown_modal.custom_id, get_values(interaction)[0])
   )
   modal.rows.append(cooldown_field.to_dict())
   await interaction.response.send_modal(modal)
@@ -134,7 +147,7 @@ async def reset_modal(interaction, text):
 
   # validate timestamp
   try:
-    timestamp, _size, _cooldown, reset, refresh_at = explore.get_values(interaction) # message values
+    timestamp, _sizex, _sizey, _cooldown, reset, refresh_at = get_values(interaction) # message values
     assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Reset Modal has expired!', ephemeral = True)
@@ -165,7 +178,7 @@ async def reset_modal(interaction, text):
 async def reset_button(interaction):
   modal = discohook.Modal(
     reset_modal.title,
-    custom_id = '{}:{}'.format(reset_modal.custom_id, explore.get_values(interaction)[0])
+    custom_id = '{}:{}'.format(reset_modal.custom_id, get_values(interaction)[0])
   )
   modal.rows.append(reset_field.to_dict())
   await interaction.response.send_modal(modal)
@@ -199,8 +212,8 @@ class SettingsView(discohook.View):
       description = '\n'.join([
         'If you are the __**server admin**__ then you can configure the following settings below for your local server canvas!',
         '',
-        '**[1] Resizing Canvas (Current Size: `{0}x{0}`)**'.format(size),
-        'Resizes the local canvas anywhere between 3x3 to 1000x1000. Pixel data outside of the new resized region will persist and will return if you decide to resize back.',
+        '**[1] Resizing Canvas (Current Size: `{}x{}`)**'.format(*size),
+        'Resizes the local canvas anywhere between 3x3 to 1000x1000. Pixel data outside of the new resized region will persist and will return if you decide to resize back. It\'s recommended to keep X and Y the same otherwise your canvas will look too thin/too wide.',
         '',
         '**[2] Setting a cooldown (Current: `{} seconds`)**'.format(cooldown),
         'Set a cooldown between 0 seconds to 24 hours. A cooldown means if someone placed a pixel, they will have to wait that amount of time before they can place another one again.',
@@ -217,8 +230,10 @@ class SettingsView(discohook.View):
 
       def blocking():
         im = draw_map(grid, configs)
-        if size < CANVAS_SIZE:
-          im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
+        factor = IMAGE_SIZE // max(size)
+        resize = (size[0] * factor, size[1] * factor)
+        if size != resize:
+          im = im.resize(resize, Image.Resampling.NEAREST)
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer
@@ -231,7 +246,7 @@ class SettingsView(discohook.View):
     dynamic_back_button = discohook.Button(
       back_button.label,
       emoji = back_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size, cooldown, reset, new_refresh_at)
+      custom_id = '{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, new_refresh_at)
     )
 
     self.add_buttons(dynamic_back_button, resize_button, cooldown_button, reset_button)

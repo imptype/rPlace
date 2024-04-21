@@ -63,7 +63,7 @@ class StartView(discohook.View):
     self.embed = discohook.Embed(
       'Welcome to {}!'.format(title),
       description = '\n'.join([
-        'Canvas size: {0}x{0}'.format(size),
+        'Canvas size: {}x{}'.format(*size),
         '',
         'Click 🔍 **Explore** to start exploring!'
       ]),
@@ -75,8 +75,10 @@ class StartView(discohook.View):
     else:
       def blocking():
         im = draw_map(grid, configs)
-        if size < CANVAS_SIZE:          
-          im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
+        factor = IMAGE_SIZE // max(size)
+        resize = (size[0] * factor, size[1] * factor)
+        if size != resize:
+          im = im.resize(resize, Image.Resampling.NEAREST)
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer

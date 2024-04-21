@@ -36,6 +36,8 @@ class Database(Deta):
       # extract configs from first record [Y0]
       if results[0]['key'].startswith('000'): # ensure it is Y 0
         configs['size'] = results[0].pop('size', CANVAS_SIZE)
+        if isinstance(configs['size'], int): # legacy sizes
+          configs['size'] = (configs['size'], configs['size'])
         configs['cooldown'] = results[0].pop('cooldown', None)
         configs['allowed'] = results[0].pop('allowed', None)
         configs['reset'] = results[0].pop('reset', 0)

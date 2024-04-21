@@ -76,6 +76,7 @@ class TopView(discohook.View):
     # get grid
     (grid, configs), self.defer_response, new_refresh_at = await get_grid(self.interaction)
     size = configs.get('size') or CANVAS_SIZE
+    reset = configs.get('reset') or 0
     
     # benchmarks 
     # 100 0.0007
@@ -111,9 +112,9 @@ class TopView(discohook.View):
       locations = [] # up to 3
       oldest = [] # up to 3
       for y in grid:
-        if y < size: # within bounds of resized grid
+        if y < size[1]: # within bounds of resized grid
           for x in grid[y]:
-            if int(x) < size: # within bounds v2
+            if int(x) < size[0] and ((not reset and len(grid[y][x]) == configs['count']) or grid[y][x][-1] == reset): # within bounds v2
               if flag:
                 if flag == 2: # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
                   guilds[grid[y][x][4]] += 1
@@ -177,6 +178,8 @@ class TopView(discohook.View):
         return '🥉'
       else:
         raise ValueError('Unhandled TopView.get_rank flag', i)
+
+    pixel_count = size[0] * size[1]
     
     texts = []
     empty = 'No data is available yet.'
@@ -190,7 +193,7 @@ class TopView(discohook.View):
             '`{}`'.format(guild_data[0]) if guild_data else '*`Unknown Server`*',
             guild_id,
             count, 
-            round(count / size, 2)
+            round((count / pixel_count) * 100, 2)
           ) for i, (guild_id, (count, guild_data)) in enumerate(guilds.items())
         ))
         else:
@@ -205,7 +208,7 @@ class TopView(discohook.View):
             '`{}`'.format(user_data[0]) if user_data else '`*Unknown User*`',
             user_id,
             count, 
-            round(count / size, 2)
+            round((count / pixel_count) * 100, 2)
           ) for i, (user_id, (count, user_data)) in enumerate(users.items())
         ))
       else:
@@ -216,7 +219,7 @@ class TopView(discohook.View):
     if colors:
       texts.append('\n'.join(
         '{} [`#{:06x}`](https://coolors.co/{:06x}) - {}x or {}%'.format(
-          get_rank(i), k, k, v, round(v / size, 2)
+          get_rank(i), k, k, v, round((v / pixel_count) * 100, 2)
         ) for i, (k, v) in enumerate(colors.items())
       ))
     else:
@@ -267,9 +270,11 @@ class TopView(discohook.View):
     else:
 
       def blocking():
-        im = draw_map(grid, size)
-        if size < CANVAS_SIZE:
-          im = im.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.NEAREST)
+        im = draw_map(grid, configs)
+        factor = IMAGE_SIZE // max(size)
+        resize = (size[0] * factor, size[1] * factor)
+        if size != resize:
+          im = im.resize(resize, Image.Resampling.NEAREST)
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer
