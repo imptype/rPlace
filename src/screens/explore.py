@@ -144,6 +144,10 @@ async def place_button(interaction):
   
   (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
 
+  allowed = configs.get('allowed') or None
+  if allowed and allowed not in interaction.author.roles:
+    return await interaction.response.send('You can\'t place because you don\'t have the whitelisted role <@&{0}> | `{0}` !'.format(allowed), ephemeral = True)
+
   size = configs.get('size') or CANVAS_SIZE
   xborder = size[0] - 1
   yborder = size[1] - 1
@@ -675,10 +679,11 @@ class ExploreView(discohook.View):
       disabled = x == xborder or not y
     )
     
+    allowed = configs.get('allowed') or None
     dynmaic_place_button = discohook.Button(
       emoji = place_button.emoji,
       custom_id = place_button.custom_id + ':',
-      disabled = place_disabled
+      disabled = place_disabled or (allowed and allowed not in map(lambda x: x.id, self.interaction.author.roles))
     )
 
     dynamic_color_button = discohook.Button(

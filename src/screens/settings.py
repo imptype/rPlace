@@ -14,7 +14,8 @@ def get_values(interaction):
     'size' : (int(c[1]), int(c[2])),
     'cooldown' : int(c[3]),
     'reset' : int(c[4]), # num of times reset
-    'spawn' : c[5]
+    'spawn' : c[5],
+    'allowed' : c[6]
   }
   refresh_at = c[-1] # so far isnt being used in any settings
   return timestamp, data, refresh_at
@@ -216,7 +217,7 @@ async def spawn_modal(interaction, x, y):
     timestamp, data, _refresh_at = get_values(interaction) # message values
     assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
-    return await interaction.response.send('The Reset Modal has expired!', ephemeral = True)
+    return await interaction.response.send('The Spawn Modal has expired!', ephemeral = True)
 
   # validate inputs
   if x != '?':
@@ -270,14 +271,75 @@ async def spawn_button(interaction):
   for field in spawn_fields:    
     modal.rows.append(field.to_dict())
   await interaction.response.send_modal(modal)
+
+allowed_field = discohook.TextInput('Allowed Role ID', 'allowed', hint = 'A role id like "1092432364757586051" or "0" for none', min_length = 1, max_length = 20, required = True)
+@discohook.modal.new('Allowed Modal', fields = [], custom_id = 'admin_allowed_modal:v{}'.format(BOT_VERSION))
+async def allowed_modal(interaction, allowed):
+
+  # validate timestamp
+  try:
+    timestamp, data, _refresh_at = get_values(interaction) # message values
+    assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
+  except: # index error = wrong screen, assert error = wrong timestamp
+    return await interaction.response.send('The Allowed Modal has expired!', ephemeral = True)
+
+  # validate role id
+  if not allowed.isdecimal():
+    return await interaction.response.send('Allowed Role ID `{}` is not a role ID!'.format(allowed), ephemeral = True)
+
+  # validate role id in range
+  if allowed != '0' and 16 > len(allowed) > 20: # role id out of range
+    return await interaction.response.send('Allowed Role ID `{}` is not a role ID!!'.format(allowed), ephemeral = True)    
+
+  # validate new allowed role prevent 2 request
+  if allowed == data['allowed']:
+    return await interaction.response.send('The allowed role is already set to `{}`! Reopen the menu if you think this message outdated.'.format(None if allowed == '0' else allowed), ephemeral = True)  
+
+  # fetch up to date grid for configs, validate new allowed role again, prevent 1 request, can be spammed but unlikely
+  (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
+  if allowed == str(configs.get('allowed') or 0): # 0 here to be consistent with cid parsing
+    return await interaction.response.send('The allowed role is already set to `{}`!! Reopen the menu if you think this message outdated.'.format(None if allowed == '0' else allowed), ephemeral = True)  
   
+  # validate if its a role in the server
+  if allowed != '0':
+    guild = await interaction.client.fetch_guild(interaction.guild_id)
+    for i in guild.roles:
+      if allowed == i['id']:
+        break
+    else:
+      return await interaction.response.send('Could not find the role with id `{0}` in your server. Are you sure this role (<@&{0}>) exists?'.format(allowed), ephemeral = True)  
+
+  # update if y0 exists, extremely rare to error and autofixes on next move
+  exists = 0 in grid
+  allowed = None if allowed == '0' else allowed # stored as string because > 16 isnt counted
+  await interaction.client.db.update_configs(local_id, exists, 'allowed', allowed)
+  configs['allowed'] = allowed  
+
+  # skip drawing if old refresh is more up to date / wont happen because we force fetched
+  skip_draw = False #refresh_at >= new_refresh_at
+
+  # all good, update view
+  refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
+  await SettingsView(interaction).update(refresh_data)
+  
+@discohook.button.new('Set Allowed Role', emoji = '👤', custom_id = 'admin_allowed:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+async def allowed_button(interaction):
+  if not interaction.guild_id:
+    return await interaction.response.send('Allowed Role setting is not available for DM canvases.', ephemeral = True)
+  modal = discohook.Modal(
+    allowed_modal.title,
+    custom_id = '{}:{}'.format(allowed_modal.custom_id, get_values(interaction)[0])
+  )
+  modal.rows.append(allowed_field.to_dict())
+  await interaction.response.send_modal(modal)
+
 class SettingsView(discohook.View):
   def __init__(self, interaction = None):
     super().__init__()
     if interaction:
       self.interaction = interaction
     else: # persistent
-      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button, spawn_button)
+      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button, spawn_button, allowed_button)
 
   async def setup(self, refresh_data): # ainit
 
@@ -296,6 +358,7 @@ class SettingsView(discohook.View):
     reset = configs.get('reset') or 0
     flip = configs.get('flip') or 0
     spawn = configs.get('spawn') or DEFAULT_SPAWN
+    allowed = configs.get('allowed') or None
 
     self.embed = discohook.Embed(
       'Pixel Canvas Local Settings',
@@ -315,7 +378,10 @@ class SettingsView(discohook.View):
         'Toggle to flip the canvas so the Y axis starts from the top instead of the bottom. Any existing pixel data will be flipped along with it.',
         '',
         '**[5] Set Spawn (Current: `{}`)**'.format(spawn == '0_0' and 'Origin' or '({}, {})'.format(spawn[0], spawn[-1])), # either "origin" or (?, ?)
-        'Set where the spawn point is when you first open the canvas. Default is at origin (0, 0). You can type "?" to make it random. If spawn is out of bounds, the closest pixel will be chosen instead.',              
+        'Set where the spawn point is when you first open the canvas. Default is at origin (0, 0). You can type "?" to make it random. If spawn is out of bounds, the closest pixel will be chosen instead.',
+        '',
+        '**[6] Set Allowed Role (Current: {})**'.format('<@&{}>'.format(allowed) if allowed else '`None`'),
+        'Set a required role you must have to place pixels on the canvas. Useful if you want everyone else to have read-only access.',   
       ]),
       color = COLOR_RED
     )
@@ -342,11 +408,11 @@ class SettingsView(discohook.View):
     dynamic_back_button = discohook.Button(
       back_button.label,
       emoji = back_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, spawn, new_refresh_at)
+      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, spawn, allowed or '0', new_refresh_at)
     )
 
     self.add_buttons(dynamic_back_button, resize_button, cooldown_button, reset_button)
-    self.add_buttons(flip_button, spawn_button)
+    self.add_buttons(flip_button, spawn_button, allowed_button)
   
   async def update(self, refresh_data = None):
     await self.setup(refresh_data)
