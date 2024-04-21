@@ -5,7 +5,7 @@ import discohook
 from PIL import Image
 from . import start, explore
 from ..utils.helpers import draw_map, get_grid
-from ..utils.constants import BOT_VERSION, COLOR_RED, CANVAS_SIZE, IMAGE_SIZE
+from ..utils.constants import BOT_VERSION, COLOR_RED, CANVAS_SIZE, IMAGE_SIZE, DEFAULT_SPAWN
 
 def get_values(interaction):
   c = interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]
@@ -14,6 +14,7 @@ def get_values(interaction):
     'size' : (int(c[1]), int(c[2])),
     'cooldown' : int(c[3]),
     'reset' : int(c[4]), # num of times reset
+    'spawn' : c[5]
   }
   refresh_at = c[-1] # so far isnt being used in any settings
   return timestamp, data, refresh_at
@@ -203,13 +204,80 @@ async def flip_button(interaction):
   refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
   await SettingsView(interaction).update(refresh_data)
 
+spawn_fields = [
+  discohook.TextInput('X', 'x', hint = 'A number in the range of 0-999 or "?" for random', min_length = 1, max_length = 3, required = True),
+  discohook.TextInput('Y', 'y', hint = 'A number in the range of 0-999 or "?" for random', min_length = 1, max_length = 3, required = True)
+]
+@discohook.modal.new('Spawn Modal', fields = [], custom_id = 'admin_spawn_modal:v{}'.format(BOT_VERSION))
+async def spawn_modal(interaction, x, y):
+
+  # validate timestamp
+  try:
+    timestamp, data, _refresh_at = get_values(interaction) # message values
+    assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
+  except: # index error = wrong screen, assert error = wrong timestamp
+    return await interaction.response.send('The Reset Modal has expired!', ephemeral = True)
+
+  # validate inputs
+  if x != '?':
+    if not x.isdecimal():
+      return await interaction.response.send('Spawn X `{}` is not a number!'.format(x), ephemeral = True)
+    elif not 0 <= int(x) <= 999:
+      return await interaction.response.send('Spawn X `{}` is out of range!'.format(x), ephemeral = True)
+  elif y != '?':
+    if not y.isdecimal():
+      return await interaction.response.send('Spawn Y `{}` is not a number!'.format(y), ephemeral = True)
+    elif not 0 <= int(y) <= 999:
+      return await interaction.response.send('Spawn Y `{}` is out of range!'.format(y), ephemeral = True)
+    
+  spawn = '_'.join((x, y))
+
+  # validate new spawn prevent 2 request
+  if spawn == data['spawn']:
+    return await interaction.response.send('The canvas spawn is already `({}, {})`! Reopen the menu if you think this message outdated.'.format(x, y), ephemeral = True)  
+  
+  # fetch up to date grid for configs
+  (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
+  reset = configs.get('spawn') or DEFAULT_SPAWN # should be None if never used or 0 if reset back
+
+  # validate new spawn prevent 2 request
+  if spawn == data['spawn']:
+    return await interaction.response.send('The canvas spawn is already `({}, {})`!! Reopen the menu if you think this message outdated.'.format(x, y), ephemeral = True)  
+  
+  # fetch up to date grid, validate new size again, prevent 1 request
+  (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True)
+  if spawn == (configs.get('spawn') or DEFAULT_SPAWN):
+    return await interaction.response.send('The canvas spawn is already `({}, {})`!! Reopen the menu if you think this message outdated.'.format(x, y), ephemeral = True)  
+  
+  # update if y0 exists, extremely rare to error and autofixes on next move
+  exists = 0 in grid
+  await interaction.client.db.update_configs(local_id, exists, 'spawn', spawn)
+  configs['spawn'] = spawn
+
+  # always draw because we force fetched, this can be improved if we save part of a 256 char hash in 100 char id
+  skip_draw = False
+
+  # all good, update view
+  refresh_data = (grid, configs), defer_response, refresh_at, skip_draw
+  await SettingsView(interaction).update(refresh_data)
+
+@discohook.button.new('Set Spawn', emoji = '🐣', custom_id = 'admin_spawn:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+async def spawn_button(interaction):
+  modal = discohook.Modal(
+    spawn_modal.title,
+    custom_id = '{}:{}'.format(spawn_modal.custom_id, get_values(interaction)[0])
+  )
+  for field in spawn_fields:    
+    modal.rows.append(field.to_dict())
+  await interaction.response.send_modal(modal)
+  
 class SettingsView(discohook.View):
   def __init__(self, interaction = None):
     super().__init__()
     if interaction:
       self.interaction = interaction
     else: # persistent
-      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button)
+      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button, spawn_button)
 
   async def setup(self, refresh_data): # ainit
 
@@ -227,6 +295,7 @@ class SettingsView(discohook.View):
     cooldown = configs.get('cooldown') or 0
     reset = configs.get('reset') or 0
     flip = configs.get('flip') or 0
+    spawn = configs.get('spawn') or DEFAULT_SPAWN
 
     self.embed = discohook.Embed(
       'Pixel Canvas Local Settings',
@@ -243,7 +312,10 @@ class SettingsView(discohook.View):
         'Resets the canvas by erasing all pixel data. This action is irreversible. You should only use this if you want to start over.',
         '',
         '**[4] Flip Y-Axis (Current: `{}`)**'.format(bool(flip)),
-        'Toggle to flip the canvas so the Y axis starts from the top instead of the bottom. Any existing pixel data will be flipped along with it.'       
+        'Toggle to flip the canvas so the Y axis starts from the top instead of the bottom. Any existing pixel data will be flipped along with it.',
+        '',
+        '**[5] Set Spawn (Current: `{}`)**'.format(spawn == '0_0' and 'Origin' or '({}, {})'.format(spawn[0], spawn[-1])), # either "origin" or (?, ?)
+        'Set where the spawn point is when you first open the canvas. Default is at origin (0, 0). You can type "?" to make it random. If spawn is out of bounds, the closest pixel will be chosen instead.',              
       ]),
       color = COLOR_RED
     )
@@ -270,11 +342,11 @@ class SettingsView(discohook.View):
     dynamic_back_button = discohook.Button(
       back_button.label,
       emoji = back_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, new_refresh_at)
+      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, spawn, new_refresh_at)
     )
 
     self.add_buttons(dynamic_back_button, resize_button, cooldown_button, reset_button)
-    self.add_buttons(flip_button)
+    self.add_buttons(flip_button, spawn_button)
   
   async def update(self, refresh_data = None):
     await self.setup(refresh_data)

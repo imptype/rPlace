@@ -1,11 +1,12 @@
 import io
 import time
+import random
 import asyncio
 import discohook
 import numpy as np
 from PIL import Image
 from . import start # .start.StartView is circular import
-from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION, COLOR_RED
+from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION, COLOR_RED, DEFAULT_SPAWN
 from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username, get_local_id#, encrypt_text
 
 def get_values(interaction):
@@ -73,7 +74,7 @@ async def up_button(interaction):
 async def upright_button(interaction):
   await move(interaction, 1, 1)
 
-color_field = discohook.TextInput('Color', 'color', hint = 'A hex string like "#ffab12" or a number <= 16777215.', min_length = 1, max_length = 8, required = True)
+color_field = discohook.TextInput('Color', 'color', hint = 'A hex string like "#ffab12" or a number <= 16777215', min_length = 1, max_length = 8, required = True)
 @discohook.modal.new('Color Modal', fields = [], custom_id = 'color_modal:v{}'.format(BOT_VERSION))
 async def color_modal(interaction, color):
   
@@ -314,7 +315,6 @@ async def jump_button(interaction):
   # we use cached size here because modal response time is strictly 3 seconds
   # and we partially validate size on modal callback and it's forced when you attempt to place anyway
   _x, _y, _zoom, _step, _color, size, _cooldown, _refresh_at, timestamp = get_values(interaction)
-  print('t', get_values(interaction))
   borders = (size[0] - 1, size[1] - 1) # xborder, yborder
 
   modal = discohook.Modal(
@@ -440,7 +440,7 @@ class ExploreView(discohook.View):
     if data:
       x, y, zoom, step, color, old_refresh_at = data
     else: # default, first move
-      x = 0
+      x = 0 # currently not hardcoded with DEFAULT_SPAWN since its unnecessary
       y = 0
       zoom = [11, 11]
       step = 1
@@ -460,9 +460,23 @@ class ExploreView(discohook.View):
 
     flip = configs.get('flip') or 0
     size = configs.get('size') or CANVAS_SIZE # can sneakily be None, unreliant with db
+    spawn = configs.get('spawn') or DEFAULT_SPAWN
     xborder = size[0] - 1
     yborder = size[1] - 1
     if not data: # only if canvas started:
+      if spawn != DEFAULT_SPAWN:
+        if spawn[0] == '?':
+          x = random.randint(0, xborder)
+        else:
+          x = int(spawn[0])
+          if x > xborder:
+            x = xborder
+        if spawn[1] == '?':
+          y = random.randint(0, yborder)
+        else:
+          y = int(spawn[-1])
+          if y > yborder:
+            y = yborder          
       if flip:
         y = yborder # start from top instead of at 0
     if flip:
