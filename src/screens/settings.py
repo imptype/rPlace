@@ -8,7 +8,15 @@ from ..utils.helpers import draw_map, get_grid
 from ..utils.constants import BOT_VERSION, COLOR_RED, CANVAS_SIZE, IMAGE_SIZE
 
 def get_values(interaction):
-  return tuple(map(int, interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]))
+  c = interaction.message.data['components'][0]['components'][0]['custom_id'].split(':')[2:]
+  timestamp = int(c[0])
+  data = {
+    'size' : (int(c[1]), int(c[2])),
+    'cooldown' : int(c[3]),
+    'reset' : int(c[4]), # num of times reset
+  }
+  refresh_at = c[-1] # so far isnt being used in any settings
+  return timestamp, data, refresh_at
 
 @discohook.button.new('Back To Home', emoji = '⬅️', custom_id = 'admin_back:v{}'.format(BOT_VERSION))
 async def back_button(interaction):
@@ -32,7 +40,7 @@ async def resize_modal(interaction, x, y):
 
   # validate timestamp
   try:
-    timestamp, old_sizex, old_sizey, _cooldown, _reset, _refresh_at = get_values(interaction) # message values
+    timestamp, data, _refresh_at = get_values(interaction) # message values
     assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Resize Modal has expired!', ephemeral = True)
@@ -42,30 +50,26 @@ async def resize_modal(interaction, x, y):
     return await interaction.response.send('Size X `{}` is not a number!'.format(x), ephemeral = True)
   elif not y.isdecimal():
     return await interaction.response.send('Size Y `{}` is not a number!'.format(y), ephemeral = True)
-  x = int(x)
-  y = int(y)
+  size = int(x), int(y)
 
   # validate new size prevent 2 request
-  if x == old_sizex and y == old_sizey:
+  if size == data['size']:
     return await interaction.response.send('The canvas is already the size `{}x{}`! Reopen the menu if you think this message outdated.'.format(x, y), ephemeral = True)  
   
   # validate the range
-  if not 3 <= x <= 1000:
+  if not 3 <= size[0] <= 1000:
     return await interaction.response.send('Size X `{}` is out of range!'.format(x), ephemeral = True)
-  elif not 3 <= y <= 1000:
+  elif not 3 <= size[1] <= 1000:
     return await interaction.response.send('Size Y `{}` is out of range!'.format(y), ephemeral = True)
 
-  # fetch up to date grid
+  # fetch up to date grid, validate new size again, prevent 1 request
   (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True)
-  old_sizex, old_sizey = configs.get('size') or CANVAS_SIZE
-
-  # validate new size again, prevent 1 request
-  if x == old_sizex and y == old_sizey:
+  if size == (configs.get('size') or CANVAS_SIZE):
     return await interaction.response.send('The canvas is already the size `{}x{}`!! Reopen the menu if you think this message outdated.'.format(x, y), ephemeral = True)  
   
   # update if y0 exists, extremely rare to error and autofixes on next move
   exists = 0 in grid
-  size = [x, y] # explicitly be list not tuple, despite being read only, to be consistent with db return value
+  size = list(size) # explicitly be list not tuple, despite being read only, to be consistent with db return value
   await interaction.client.db.update_configs(local_id, exists, 'size', size)
   configs['size'] = size  
 
@@ -92,7 +96,7 @@ async def cooldown_modal(interaction, cooldown):
 
   # validate timestamp
   try:
-    timestamp, _sizex, _sizey, old_cooldown, _reset, _refresh_at = get_values(interaction) # message values
+    timestamp, data, _refresh_at = get_values(interaction) # message values
     assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Cooldown Modal has expired!', ephemeral = True)
@@ -103,19 +107,16 @@ async def cooldown_modal(interaction, cooldown):
   cooldown = int(cooldown)
 
   # validate new cooldown prevent 2 request
-  if cooldown == old_cooldown:
+  if cooldown == data['cooldown']:
     return await interaction.response.send('The canvas cooldown is already `{}`! Reopen the menu if you think this message outdated.'.format(cooldown), ephemeral = True)  
   
   # validate the range
   if not 0 <= cooldown <= 86400: # 24 * 60 * 60
     return await interaction.response.send('Cooldown `{}` is out of range!'.format(cooldown), ephemeral = True)
 
-  # fetch up to date grid for configs
+  # fetch up to date grid for configs, validate new size again, prevent 1 request, can be spammed but unlikely
   (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
-  old_cooldown = configs.get('cooldown') or 0 # should be None if never used or 0 if reset back
-
-  # validate new size again, prevent 1 request, can be spammed but unlikely
-  if cooldown == old_cooldown:
+  if cooldown == (configs.get('cooldown') or 0): # should be None if never used or 0 if reset back
     return await interaction.response.send('The canvas is already the cooldown `{}`!! Reopen the menu if you think this message outdated.'.format(cooldown), ephemeral = True)  
   
   # update if y0 exists, extremely rare to error and autofixes on next move
@@ -147,7 +148,7 @@ async def reset_modal(interaction, text):
 
   # validate timestamp
   try:
-    timestamp, _sizex, _sizey, _cooldown, reset, refresh_at = get_values(interaction) # message values
+    timestamp, _data, _refresh_at = get_values(interaction) # message values
     assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
   except: # index error = wrong screen, assert error = wrong timestamp
     return await interaction.response.send('The Reset Modal has expired!', ephemeral = True)
@@ -159,10 +160,9 @@ async def reset_modal(interaction, text):
   # fetch up to date grid for configs
   (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
   reset = configs.get('reset') or 0 # should be None if never used or 0 if reset back
-
   reset += 1
 
-  # update if y0 exists, extremely rare to error and autofixes on next move
+  # update if y0 exists, extremely rare to error and autofixes on next move, can be spammed a lot, add guild-based debounce in future
   exists = 0 in grid
   await interaction.client.db.update_configs(local_id, exists, 'reset', reset)
   configs['reset'] = reset
