@@ -15,7 +15,8 @@ def get_values(interaction):
     'cooldown' : int(c[3]),
     'reset' : int(c[4]), # num of times reset
     'spawn' : c[5],
-    'allowed' : c[6]
+    'allowed' : c[6],
+    'whiteout' : int(c[7]) if c[7].isdecimal() else None # number or "x" for None, can do if == 'x' instead too
   }
   refresh_at = c[-1] # so far isnt being used in any settings
   return timestamp, data, refresh_at
@@ -332,6 +333,62 @@ async def allowed_button(interaction):
   )
   modal.rows.append(allowed_field.to_dict())
   await interaction.response.send_modal(modal)
+  
+whiteout_field = discohook.TextInput('Color or "x" to disable', 'whiteout', hint = 'Color "#ffab12" | Number <= 16777215 | "x" for disabled', min_length = 1, max_length = 8, required = True)
+@discohook.modal.new('Whiteout Modal', fields = [], custom_id = 'admin_allowed_modal:v{}'.format(BOT_VERSION))
+async def whiteout_modal(interaction, whiteout):
+
+  # validate timestamp
+  try:
+    timestamp, data, _refresh_at = get_values(interaction) # message values
+    assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
+  except: # index error = wrong screen, assert error = wrong timestamp
+    return await interaction.response.send('The Whiteout Modal has expired!', ephemeral = True)
+
+  # validate input
+  if whiteout != 'x':
+    try:
+      parsed_color = int(whiteout) if whiteout.isdecimal() else int(whiteout.removeprefix('#'), base = 16)
+    except:
+      return await interaction.response.send('Whiteout Color `{}` is not a color!'.format(whiteout), ephemeral = True)
+
+    # validate range
+    if not 0 <= parsed_color <= 256 ** 3 - 1:
+      return await interaction.response.send('Whiteout Color `{}` is out of range!'.format(whiteout), ephemeral = True)
+
+  # validate new whiteout value
+  whiteout = None if whiteout == 'x' else parsed_color
+  yes_text = 'Whiteout Color `{}` is already selected!'.format(whiteout)
+  no_text = 'Whiteout is already disabled!'
+  end_text = ' Reopen the menu if you think this message outdated.'
+  if whiteout == data['whiteout']:
+    return await interaction.response.send((no_text if whiteout is None else yes_text) + end_text, ephemeral = True)
+
+  # fetch up to date grid for configs, validate whitoeout color again, prevent 1 request, can be spammed but unlikely
+  (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
+  if whiteout == (configs.get('whiteout') or 0): # db returns number or None here
+    return await interaction.response.send((no_text if whiteout is None else yes_text) + '!' + end_text, ephemeral = True)
+  
+  # update if y0 exists, extremely rare to error and autofixes on next move
+  exists = 0 in grid
+  await interaction.client.db.update_configs(local_id, exists, 'whiteout', whiteout)
+  configs['whiteout'] = whiteout  
+
+  # skip drawing if old refresh is more up to date / wont happen because we force fetched
+  skip_draw = False #refresh_at >= new_refresh_at
+
+  # all good, update view
+  refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
+  await SettingsView(interaction).update(refresh_data)
+  
+@discohook.button.new('Set Whiteout', emoji = '🪣', custom_id = 'admin_whiteout:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+async def whiteout_button(interaction):
+  modal = discohook.Modal(
+    whiteout_modal.title,
+    custom_id = '{}:{}'.format(whiteout_modal.custom_id, get_values(interaction)[0])
+  )
+  modal.rows.append(whiteout_field.to_dict())
+  await interaction.response.send_modal(modal)
 
 class SettingsView(discohook.View):
   def __init__(self, interaction = None):
@@ -339,7 +396,7 @@ class SettingsView(discohook.View):
     if interaction:
       self.interaction = interaction
     else: # persistent
-      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button, spawn_button, allowed_button)
+      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button, spawn_button, allowed_button, whiteout_button)
 
   async def setup(self, refresh_data): # ainit
 
@@ -358,7 +415,8 @@ class SettingsView(discohook.View):
     reset = configs.get('reset') or 0
     flip = configs.get('flip') or 0
     spawn = configs.get('spawn') or DEFAULT_SPAWN
-    allowed = configs.get('allowed') or None
+    allowed = configs.get('allowed') # or None if not found
+    whiteout = configs.get('whiteout') # can be a number including 0 or None
 
     self.embed = discohook.Embed(
       'Pixel Canvas Local Settings',
@@ -381,7 +439,10 @@ class SettingsView(discohook.View):
         'Set where the spawn point is when you first open the canvas. Default is at origin (0, 0). You can type "?" to make it random. If spawn is out of bounds, the closest pixel will be chosen instead.',
         '',
         '**[6] Set Allowed Role (Current: {})**'.format('<@&{}>'.format(allowed) if allowed else '`None`'),
-        'Set a required role you must have to place pixels on the canvas. Useful if you want everyone else to have read-only access.',   
+        'Set a required role you must have to place pixels on the canvas. Useful if you want everyone else to have read-only access.',
+        '',
+        '**[7] Set Whiteout (Current: `{}`)**'.format('Disabled' if whiteout is None else '#{:06x}'.format(whiteout)),
+        'Set the whiteout color, which forces everyone to place one color on the map. Default is disabled, which means any color can be placed.'
       ]),
       color = COLOR_RED
     )
@@ -408,11 +469,11 @@ class SettingsView(discohook.View):
     dynamic_back_button = discohook.Button(
       back_button.label,
       emoji = back_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, spawn, allowed or '0', new_refresh_at)
+      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, spawn, allowed or '0', 'x' if whiteout is None else whiteout, new_refresh_at)
     )
 
     self.add_buttons(dynamic_back_button, resize_button, cooldown_button, reset_button)
-    self.add_buttons(flip_button, spawn_button, allowed_button)
+    self.add_buttons(flip_button, spawn_button, allowed_button, whiteout_button)
   
   async def update(self, refresh_data = None):
     await self.setup(refresh_data)

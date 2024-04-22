@@ -144,6 +144,10 @@ async def place_button(interaction):
   
   (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
 
+  whiteout = configs.get('whiteout')
+  if whiteout: # override with whiteout color
+    color = whiteout
+
   allowed = configs.get('allowed') or None
   if allowed and allowed not in interaction.author.roles:
     return await interaction.response.send('You can\'t place because you don\'t have the whitelisted role <@&{0}> | `{0}` !'.format(allowed), ephemeral = True)
@@ -465,6 +469,9 @@ class ExploreView(discohook.View):
     flip = configs.get('flip') or 0
     size = configs.get('size') or CANVAS_SIZE # can sneakily be None, unreliant with db
     spawn = configs.get('spawn') or DEFAULT_SPAWN
+    whiteout = configs.get('whiteout')
+    if whiteout: # override color to be this instead
+      color = whiteout
     xborder = size[0] - 1
     yborder = size[1] - 1
     if not data: # only if canvas started:
@@ -689,7 +696,8 @@ class ExploreView(discohook.View):
     dynamic_color_button = discohook.Button(
       'Color: #{:06x}'.format(color),
       custom_id = color_button.custom_id + ':',
-      style = color_button.style
+      style = color_button.style,
+      disabled = whiteout is not None
     )
 
     dynamic_step_select = discohook.Select(

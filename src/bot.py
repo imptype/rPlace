@@ -20,7 +20,7 @@ from .cogs.test import test_command
 from .screens.start import StartView
 from .screens.explore import ExploreView, color_modal, jump_modal
 from .screens.top import TopView
-from .screens.settings import SettingsView, resize_modal, cooldown_modal, reset_modal, spawn_modal, allowed_modal
+from .screens.settings import SettingsView, resize_modal, cooldown_modal, reset_modal, spawn_modal, allowed_modal, whiteout_modal
 
 class CustomMiddleware(BaseHTTPMiddleware):
   # new session per threadid/event loop that uses same app instance
@@ -210,6 +210,7 @@ def run():
   app.active_components[reset_modal.custom_id] = reset_modal
   app.active_components[spawn_modal.custom_id] = spawn_modal
   app.active_components[allowed_modal.custom_id] = allowed_modal
+  app.active_components[whiteout_modal.custom_id] = whiteout_modal
 
   # Add commands
   commands = (
