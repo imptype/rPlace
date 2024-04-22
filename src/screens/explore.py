@@ -148,6 +148,10 @@ async def place_button(interaction):
   if whiteout: # override with whiteout color
     color = whiteout
 
+  noedit = configs.get('noedit') or 0
+  if noedit:
+    return await interaction.response.send('The server admin has disabled everyone from editing the canvas.', ephemeral = True)
+    
   allowed = configs.get('allowed') or None
   if allowed and allowed not in interaction.author.roles:
     return await interaction.response.send('You can\'t place because you don\'t have the whitelisted role <@&{0}> | `{0}` !'.format(allowed), ephemeral = True)
@@ -686,11 +690,12 @@ class ExploreView(discohook.View):
       disabled = x == xborder or not y
     )
     
+    noedit = configs.get('noedit') or 0
     allowed = configs.get('allowed') or None
     dynmaic_place_button = discohook.Button(
       emoji = place_button.emoji,
       custom_id = place_button.custom_id + ':',
-      disabled = place_disabled or (allowed and allowed not in map(lambda x: x.id, self.interaction.author.roles))
+      disabled = bool(noedit) or place_disabled or (allowed and allowed not in map(lambda x: x.id, self.interaction.author.roles))
     )
 
     dynamic_color_button = discohook.Button(

@@ -16,7 +16,8 @@ def get_values(interaction):
     'reset' : int(c[4]), # num of times reset
     'spawn' : c[5],
     'allowed' : c[6],
-    'whiteout' : int(c[7]) if c[7].isdecimal() else None # number or "x" for None, can do if == 'x' instead too
+    'whiteout' : int(c[7]) if c[7].isdecimal() else None, # number or "x" for None, can do if == 'x' instead too
+    'noedit' : int(c[8])
   }
   refresh_at = c[-1] # so far isnt being used in any settings
   return timestamp, data, refresh_at
@@ -348,7 +349,7 @@ async def whiteout_modal(interaction, whiteout):
   # validate input
   if whiteout != 'x':
     try:
-      parsed_color = int(whiteout) if whiteout.isdecimal() else int(whiteout.removeprefix('#'), base = 16)
+      parsed_color = int(whiteout) if whiteout.isdecimal() else int(whiteout.lstrip('#'), base = 16)
     except:
       return await interaction.response.send('Whiteout Color `{}` is not a color!'.format(whiteout), ephemeral = True)
 
@@ -390,13 +391,33 @@ async def whiteout_button(interaction):
   modal.rows.append(whiteout_field.to_dict())
   await interaction.response.send_modal(modal)
 
+@discohook.button.new('Toggle Canvas Editing', emoji = '🪄', custom_id = 'admin_noedit:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+async def noedit_button(interaction):
+
+  # fetch up to date grid for configs
+  (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
+  noedit = configs.get('noedit') or 0
+  noedit = int(not noedit)
+
+  # update if y0 exists, extremely rare to error and autofixes on next move, can be spammed a lot, add guild-based debounce in future
+  exists = 0 in grid
+  await interaction.client.db.update_configs(local_id, exists, 'noedit', noedit)
+  configs['noedit'] = noedit
+
+  # skip drawing if old refresh is more up to date / wont happen because we force fetched/flipped
+  skip_draw = False #refresh_at >= new_refresh_at
+
+  # all good, update view
+  refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
+  await SettingsView(interaction).update(refresh_data)
+
 class SettingsView(discohook.View):
   def __init__(self, interaction = None):
     super().__init__()
     if interaction:
       self.interaction = interaction
     else: # persistent
-      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button, spawn_button, allowed_button, whiteout_button)
+      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button, spawn_button, allowed_button, whiteout_button, noedit_button)
 
   async def setup(self, refresh_data): # ainit
 
@@ -417,6 +438,7 @@ class SettingsView(discohook.View):
     spawn = configs.get('spawn') or DEFAULT_SPAWN
     allowed = configs.get('allowed') # or None if not found
     whiteout = configs.get('whiteout') # can be a number including 0 or None
+    noedit = configs.get('noedit') or 0 # kind of reversed, if 1 = they cant edit
 
     self.embed = discohook.Embed(
       'Pixel Canvas Local Settings',
@@ -442,7 +464,10 @@ class SettingsView(discohook.View):
         'Set a required role you must have to place pixels on the canvas. Useful if you want everyone else to have read-only access.',
         '',
         '**[7] Set Whiteout (Current: `{}`)**'.format('Disabled' if whiteout is None else '#{:06x}'.format(whiteout)),
-        'Set the whiteout color, which forces everyone to place one color on the map. Default is disabled, which means any color can be placed.'
+        'Set the whiteout color, forcing everyone to place one color on the map. Default is disabled, which means any color can be placed.',
+        '',
+        '**[8] Toggle Canvas Editing (Current: `{}`)**'.format(bool(not noedit)),
+        'Enable/disable being able to place pixels on the canvas at all.',
       ]),
       color = COLOR_RED
     )
@@ -469,11 +494,12 @@ class SettingsView(discohook.View):
     dynamic_back_button = discohook.Button(
       back_button.label,
       emoji = back_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, spawn, allowed or '0', 'x' if whiteout is None else whiteout, new_refresh_at)
+      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, spawn, allowed or '0', 'x' if whiteout is None else whiteout, noedit, new_refresh_at)
     )
 
     self.add_buttons(dynamic_back_button, resize_button, cooldown_button, reset_button)
     self.add_buttons(flip_button, spawn_button, allowed_button, whiteout_button)
+    self.add_buttons(noedit_button)
   
   async def update(self, refresh_data = None):
     await self.setup(refresh_data)

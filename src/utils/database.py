@@ -44,6 +44,7 @@ class Database(Deta):
         configs['spawn'] = results[0].pop('spawn', None)
         configs['allowed'] = results[0].pop('allowed', None) # id is string because > 16
         configs['whiteout'] = results[0].pop('whiteout', None)
+        configs['editing'] = results[0].pop('editing', True)
       for record in results:
         y = record['key'].split(' ')[0] # incase local id exists, it just gets the Y value
         y = int(''.join([y[:-1].lstrip('0'), y[-1]])) # convert 000, 020 to 0, 20
