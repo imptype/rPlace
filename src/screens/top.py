@@ -114,6 +114,7 @@ class TopView(discohook.View):
       for y in grid:
         if y < size[1]: # within bounds of resized grid
           for x in grid[y]:
+            print(x)
             if int(x) < size[0] and ((not reset and len(grid[y][x]) == configs['count']) or grid[y][x][-1] == reset): # within bounds v2
               if flag:
                 if flag == 2: # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
