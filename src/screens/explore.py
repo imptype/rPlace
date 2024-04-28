@@ -243,7 +243,9 @@ async def place_button(interaction):
     tile.append(reset)
 
   # update database with new tile or create row if it does not exist
-  if row or (not y and configs) : # row exists or if configs exist if y0
+  actual_configs = configs.copy()
+  del actual_configs['count'] # this makes the below check falsey
+  if row or (not y and actual_configs) : # row exists or if configs exist if y0
     task1 = interaction.client.db.update_tile(local_id, y, x, tile)
   else:
     task1 = interaction.client.db.create_row(local_id, y, x, tile)
