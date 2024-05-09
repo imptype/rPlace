@@ -604,7 +604,7 @@ class ExploreView(discohook.View):
       def blocking():
         sconfigs = configs.copy()
         sconfigs['size'] = zoom # needed for the "reset" attribute
-        bim = draw_map(grid, sconfigs, startx, starty)
+        bim = draw_map(grid, sconfigs, startx, starty) # background image
 
         # draw cursor if not cached
         n = 8 # cursor is 8px in size
@@ -626,15 +626,17 @@ class ExploreView(discohook.View):
           a[-s:-1, -1] = c
 
           cim = Image.fromarray(a)
-          app.cursor = cim
+          app.cursor = cim # cursor image
         
         im = bim.resize(np.array(bim.size) * n, Image.Resampling.NEAREST)
         im.paste(app.cursor, tuple(np.array(pointer) * n), app.cursor)  # assuming max size doesn't exceed 128, this is fine
 
-        factor = IMAGE_SIZE // max(zoom)
-        resize = (zoom[0] * factor, zoom[1] * factor)
-        if size != resize:
-          im = im.resize(resize, Image.Resampling.NEAREST)        
+        factor = IMAGE_SIZE // max(im.size) # assumes image_size is always bigger than max canvas size, 1000
+        resize = (im.width * factor, im.height * factor)
+        if im.size != resize: # if post size is different, update it
+          im = im.resize(resize, Image.Resampling.NEAREST)
+        else:
+          print('skip resize') 
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer

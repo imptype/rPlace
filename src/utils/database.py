@@ -30,7 +30,7 @@ class Database(Deta):
     query.equals('local_id', local_id)
     
     grid = {}
-    configs = {}
+    configs = {'reset' : 0}
     results = (await self.pixels.fetch([query]))['items']
     if results:
       # extract configs from first record [Y0]
