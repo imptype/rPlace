@@ -16,7 +16,7 @@ from . import constants
 # space ' ' is reserved to be delimeter
 ASCII_CHARS = list("""!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""")
 
-# encryption is unused, could use it for a future bot
+# encryption is unused so bot stays fast, could use it for a future bot
 CRYPT_CHARS = list(string.digits + string.ascii_letters + ':._') # all possible chars in custom id
 MAX_SURROGATE = 2_048
 START_SURROGATE = 55_296 # 0xd800
@@ -40,29 +40,24 @@ def get_local_id(interaction):
     #local_id = convert_text(local_id, string.digits) # unused because it sometimes breaks deta's querying
   return local_id # ^ saves storage
 
-async def get_grid(interaction, force = False): # interaction Client = taking snapshot
+async def get_grid(interaction, force = False):
 
-  if isinstance(interaction, discohook.Client): # discohook
-    app = interaction
-    local_id = None
-  else:
-    app = interaction.client
-    local_id = get_local_id(interaction)
-
-  if is_local(interaction): # /local-canvas
+  app = interaction.client
+  local_id = get_local_id(interaction)
+ 
+  if local_id: # /local-canvas
     if interaction.guild_id: # /local-canvas in guild
-      tile_count = 4
-      #tile = [color, timestamp, count, convert_text(interaction.author.id)]
+      tile_count = 4 # tile = [color, timestamp, count, convert_text(interaction.author.id)]
     else: # /local-canvas in DMs
-      tile_count = 3
-      #tile = [color, timestamp, count]
+      tile_count = 3 # tile = [color, timestamp, count]
   else: # /canvas
-    if interaction.guild_id: # /canvas in guild
-      tile_count = 5
-      #tile = [color, timestamp, count, convert_text(interaction.author.id), convert_text(interaction.guild_id)]
-    else: # /canvas in DMs
-      tile_count = 4
-      #tile = [color, timestamp, count, convert_text(interaction.author.id)]
+    tile_count = None # main canvas cant be reset
+  #   if interaction.guild_id: # /canvas in guild
+  #     tile_count = 5
+  #     #tile = [color, timestamp, count, convert_text(interaction.author.id), convert_text(interaction.guild_id)]
+  #   else: # /canvas in DMs
+  #     tile_count = 4
+  #     #tile = [color, timestamp, count, convert_text(interaction.author.id)]
 
   cache = app.pixels
   refresh_cache = app.refreshes
@@ -90,7 +85,10 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
           if not grid_data or refresh_cache[local_id] / 10 ** 7 + app.constants.FETCH_DEBOUNCE < time.time(): 
             cache[local_id] = grid_data = await app.db.get_grid(local_id)
             refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
-            grid_data[1]['count'] = tile_count # edit configs, put number of expected values in each tile in configs for reset attribute
+            if tile_count:
+              grid_data[1]['count'] = tile_count # edit configs, put number of expected values in each tile in configs for reset attribute
+        except Exception as e:
+          raise e
         finally:
           lock.release()
 
@@ -112,7 +110,7 @@ async def get_grid(interaction, force = False): # interaction Client = taking sn
       else:
         grid_data, refresh_at = fetch_task._loop.run_until_complete(fetch_task)
   
-  if force: # need to return local id too for updating db
+  if force: # need to return local id too for updating db in settings usually
     return grid_data, defer_response, refresh_at, local_id
   return grid_data, defer_response, refresh_at # startview needs this to decide if refresh button works and exploreview too
 
@@ -227,30 +225,47 @@ def revert_text(text):
       
 #   return result
 
-def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and startx is given
-  size = configs.get('size') or constants.CANVAS_SIZE # these sould be dict[key] db should return a certainty
-  reset = configs.get('reset') or 0
-  a = np.empty((size[1], size[0], 3), np.uint8)
-  for i in range(size[1]):
-    y_key = starty + i
-    if y_key in grid:
-      a[i] = np.vstack(tuple((
+def calc_cell(x, y, args): # x here is string, y is int, as grid is {y (int) : {x (str) : [rgb cells]}}, args is grid, local, reset, count
+  return np.array(((args[0][y][x][0] >> 16) & 255, (args[0][y][x][0] >> 8) & 255, args[0][y][x][0] & 255), np.uint8) if (
+    x in args[0][y] and (
+      not args[1] or ( # ignore reset logic below if global canvas
         (
-          np.array(((grid[y_key][str(x_key)][0] >> 16) & 255, (grid[y_key][str(x_key)][0] >> 8) & 255, grid[y_key][str(x_key)][0] & 255), np.uint8)
-          if str(x_key) in grid[y_key] and (
-            (
-              not reset and 
-              len(grid[y_key][str(x_key)]) == configs['count'] # has never been reset
-            ) or (
-              grid[y_key][str(x_key)][-1] == reset # reset is equals to reset count, which is last value in tile
-            )
-          )
-          else np.full((3), 255, np.uint8)
+          not args[2] and # ignore if never been reset
+          len(grid[y][x]) == args[3] # has never been reset
+        ) or (
+          args[0][y][x][-1] == args[2] # reset is equals to reset count, which is last value in tile
         )
-        for x_key in range(startx, startx + size[0]) # this ensures X order
-      )), dtype = np.uint8)
-    else: # new grids
-      a[i] = np.full((size[0], 3), 255, np.uint8)
+      ) # below: show color if above true otherwise show white rgb pixel
+    )) else np.full((3), 255, np.uint8)
+vec_calc_cell = np.vectorize(calc_cell, np.dtype(np.uint8).char, excluded = {'y', 'args'}, signature = '()->(3)')
+
+def calc_row(y, startx, size, args):
+  xdtype = startx + size[0] > 256 and np.uint16 or np.uint8 # dtype for available columns (X)
+  mask = np.intersect1d(np.arange(startx, startx + size[0], dtype = xdtype), tuple(args[0][y])).astype(xdtype) # indexes that exist in grid
+  a = np.full((size[0], 3), 255, np.uint8) # default row is white pixels
+  if mask.size:
+    a[mask - startx] = vec_calc_cell(mask.astype(str), y = y, args = args) # np.full((size[0], 3), 0, np.uint8), string keys
+  return a
+vec_calc_row = np.vectorize(calc_row, np.dtype(np.uint8).char, excluded = {'y', 'startx', 'size', 'args'}, signature = '()->(n,3)')
+
+def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and startx is given
+  size = configs.get('size') or constants.CANVAS_SIZE # these sould be dict[key] db should return a certainty, overriden during sections
+  local = configs['local'] # determined and will exist by get_grid
+  reset = configs.get('reset') # or 0 / doesnt matter for the check later in calc_cell
+  count = configs.get('count') # will be None for snapshots, ensure 'local' doesn't work first before reaching this point
+  
+  args = ( # list of other args for ease of access in calc_cell
+    grid, # dictmap
+    local,
+    reset,
+    count
+  )
+
+  ydtype = starty + size[1] > 256 and np.uint16 or np.uint8 # dtype for available rows (Y), we need original size.
+  a = np.full((*size[::-1], 3), 255, np.uint8) # default grid is white pixels
+  mask = np.intersect1d(np.arange(starty, starty + size[1], dtype = ydtype), tuple(grid)).astype(ydtype) # indexes that exist in grid
+  a[mask - starty] = vec_calc_row(mask, startx = startx, size = size, args = args) # if check not required if type is specifice
+
   flip = configs.get('flip') or 0
   n = (int(flip) * 2) - 1 # whether to draw upside down or not, if they enabled the setting
   return Image.fromarray(a[::n])

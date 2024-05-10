@@ -185,7 +185,7 @@ async def place_button(interaction):
   
   # validate tile is not already the same color, rare case if place button is outdated, and validate not using same reset
   reset = configs.get('reset') or 0
-  if tile and tile[0] == color and ((not reset and len(tile) == configs['count']) or tile[-1] == reset):
+  if tile and tile[0] == color and (not configs['local'] or ((not reset and len(tile) == configs['count']) or tile[-1] == reset)):
     return await ExploreView(interaction).update(data, refresh_data, (x, y, color))
 
   # recheck cooldown with updated db cooldown, happens when no cooldown vs newly added cooldown
@@ -243,9 +243,7 @@ async def place_button(interaction):
     tile.append(reset)
 
   # update database with new tile or create row if it does not exist
-  actual_configs = configs.copy()
-  del actual_configs['count'] # this makes the below check falsey
-  if row or (not y and actual_configs) : # row exists or if configs exist if y0
+  if row or (not y and configs['exist']) : # row exists or if configs exist when y is 0
     task1 = interaction.client.db.update_tile(local_id, y, x, tile)
   else:
     task1 = interaction.client.db.create_row(local_id, y, x, tile)
@@ -506,7 +504,7 @@ class ExploreView(discohook.View):
 
     # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
     thumbnail_url = None
-    if pixel and ((not reset and len(pixel) == configs['count']) or pixel[-1] == reset): # dont show data if pixels placed before reset
+    if pixel and (not configs['local'] or ((not reset and len(pixel) == configs['count']) or pixel[-1] == reset)): # dont show data if pixels placed before reset
       place_disabled = color == pixel[0] # selecting same color
 
       text = '🎨 #{:06x}'.format(pixel[0])
@@ -603,7 +601,7 @@ class ExploreView(discohook.View):
       app = self.interaction.client
       def blocking():
         sconfigs = configs.copy()
-        sconfigs['size'] = zoom # needed for the "reset" attribute
+        sconfigs['size'] = zoom # override size with zoom, draw_map will use startxy to decide dtypes
         bim = draw_map(grid, sconfigs, startx, starty) # background image
 
         # draw cursor if not cached
@@ -635,8 +633,6 @@ class ExploreView(discohook.View):
         resize = (im.width * factor, im.height * factor)
         if im.size != resize: # if post size is different, update it
           im = im.resize(resize, Image.Resampling.NEAREST)
-        else:
-          print('skip resize') 
         buffer = io.BytesIO()
         im.save(buffer, 'PNG')
         return buffer

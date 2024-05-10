@@ -26,6 +26,7 @@ def run():
 
   # Define app
   app = Starlette(lifespan = lifespan)
+  app.test = bool(os.getenv('test'))
 
   # Attach webhooks
   app.global_webhook = discohook.PartialWebhook.from_url(app, os.getenv('GLOBAL'))
@@ -46,6 +47,14 @@ def run():
     else:
       raise ValueError('Unhandled action id', data)
     return Response()
+    
+  # Test route
+  if app.test:
+    @app.route('/test')
+    async def test(request):
+      print('Test')
+      await app.db.take_snapshot()
+      return Response()
 
   # Return app object
   return app

@@ -30,7 +30,10 @@ class Database(Deta):
     query.equals('local_id', local_id)
     
     grid = {}
-    configs = {'reset' : 0}
+    configs = {
+      'exist' : False, # when updating row, if y0 row exists, this will be True
+      'local' : bool(local_id) # used for draw grid/skip the reset check
+    }
     results = (await self.pixels.fetch([query]))['items']
     if results:
       # extract configs from first record [Y0]
@@ -45,6 +48,7 @@ class Database(Deta):
         configs['allowed'] = results[0].pop('allowed', None) # id is string because > 16
         configs['whiteout'] = results[0].pop('whiteout', None)
         configs['noedit'] = results[0].pop('noedit', 0)
+        configs['exist'] = True
       for record in results:
         y = record['key'].split(' ')[0] # incase local id exists, it just gets the Y value
         y = int(''.join([y[:-1].lstrip('0'), y[-1]])) # convert 000, 020 to 0, 20
@@ -179,8 +183,10 @@ class Database(Deta):
     content = '<t:{}:R>'.format(now)
     image_file = discohook.File('map.png', content = buffer.getvalue())
 
-    # send to hourly
-    await (await self.app.hour_webhook.send(content, file = image_file, wait = True)).crosspost()
+    # send to hourly / this is used for testing usually
+    message = await self.app.hour_webhook.send(content, file = image_file, wait = True)
+    if not self.app.test:
+      await message.crosspost()
 
     # check if new day or week
     d = datetime.datetime.fromtimestamp(now)
@@ -201,11 +207,17 @@ class Database(Deta):
 
       # update new day
       if d.month != record['month'] or d.day != record['day']:
-        await (await self.app.day_webhook.send(content, file = image_file, wait = True)).crosspost()
+        if self.app.test:
+          print('send day snapshot')
+        else:
+          await (await self.app.day_webhook.send(content, file = image_file, wait = True)).crosspost()
         
         # update new week here too
         if d.weekday() == 5: # only on saturdays
-          await (await self.app.week_webhook.send(content, file = image_file, wait = True)).crosspost()
+          if self.app.test:
+            print('send week snapshot')
+          else:
+            await (await self.app.week_webhook.send(content, file = image_file, wait = True)).crosspost()
         
         record['day'] = d.day
         record['month'] = d.month
