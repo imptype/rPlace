@@ -241,9 +241,10 @@ vec_calc_cell = np.vectorize(calc_cell, np.dtype(np.uint8).char, excluded = {'y'
 
 def calc_row(y, startx, size, args):
   xdtype = startx + size[0] > 256 and np.uint16 or np.uint8 # dtype for available columns (X)
-  mask = np.intersect1d(np.arange(startx, startx + size[0], dtype = xdtype), tuple(args[0][y])).astype(xdtype) # indexes that exist in grid
   a = np.full((size[0], 3), 255, np.uint8) # default row is white pixels
-  a[mask - startx] = vec_calc_cell(mask.astype(str), y = y, args = args) # np.full((size[0], 3), 0, np.uint8), string keys
+  mask = np.intersect1d(np.arange(startx, startx + size[0], dtype = xdtype), tuple(args[0][y])).astype(xdtype) # indexes that exist in grid
+  if mask.size:
+    a[mask - startx] = vec_calc_cell(mask.astype(str), y = y, args = args) # np.full((size[0], 3), 0, np.uint8), string keys
   return a
 vec_calc_row = np.vectorize(calc_row, np.dtype(np.uint8).char, excluded = {'y', 'startx', 'size', 'args'}, signature = '()->(n,3)')
 
@@ -263,7 +264,8 @@ def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and 
   ydtype = starty + size[1] > 256 and np.uint16 or np.uint8 # dtype for available rows (Y), we need original size.
   a = np.full((*size[::-1], 3), 255, np.uint8) # default grid is white pixels
   mask = np.intersect1d(np.arange(starty, starty + size[1], dtype = ydtype), tuple(grid)).astype(ydtype) # indexes that exist in grid
-  a[mask - starty] = vec_calc_row(mask, startx = startx, size = size, args = args) # if check not required if type is specifice
+  if mask.size:
+    a[mask - starty] = vec_calc_row(mask, startx = startx, size = size, args = args) # if check not required if type is specifice
 
   flip = configs.get('flip') or 0
   n = (int(flip) * 2) - 1 # whether to draw upside down or not, if they enabled the setting
