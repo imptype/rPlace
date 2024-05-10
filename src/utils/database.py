@@ -123,15 +123,14 @@ class Database(Deta):
       temp = {}
       c = 0
       n = 2000 # max length of discord message, can change to embed later 31x for more characters (62000)
-      d = '\n'
       for k in texts:
-        if c + len(texts[k]) + len(d) > n:
+        if c + len(texts[k])> n:
           c = len(texts[k])
           chunks.append(temp)
           temp = {k : texts[k]}
         else:
           temp[k] = texts[k]
-          c += len(texts[k])
+          c += len(texts[k]) + 1
       chunks.append(temp)
 
       ratelimit = 5 # 5 messages per 5 sec
