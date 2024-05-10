@@ -231,7 +231,7 @@ def calc_cell(x, y, args): # x here is string, y is int, as grid is {y (int) : {
       not args[1] or ( # ignore reset logic below if global canvas
         (
           not args[2] and # ignore if never been reset
-          len(grid[y][x]) == args[3] # has never been reset
+          len(args[0][y][x]) == args[3] # has never been reset
         ) or (
           args[0][y][x][-1] == args[2] # reset is equals to reset count, which is last value in tile
         )

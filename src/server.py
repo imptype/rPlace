@@ -53,7 +53,7 @@ def run():
     @app.route('/test')
     async def test(request):
       print('Test')
-      await app.db.take_snapshot()
+      await app.db.refresh_logs()
       return Response()
 
   # Return app object
