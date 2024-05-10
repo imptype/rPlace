@@ -243,8 +243,7 @@ def calc_row(y, startx, size, args):
   xdtype = startx + size[0] > 256 and np.uint16 or np.uint8 # dtype for available columns (X)
   mask = np.intersect1d(np.arange(startx, startx + size[0], dtype = xdtype), tuple(args[0][y])).astype(xdtype) # indexes that exist in grid
   a = np.full((size[0], 3), 255, np.uint8) # default row is white pixels
-  if mask.size:
-    a[mask - startx] = vec_calc_cell(mask.astype(str), y = y, args = args) # np.full((size[0], 3), 0, np.uint8), string keys
+  a[mask - startx] = vec_calc_cell(mask.astype(str), y = y, args = args) # np.full((size[0], 3), 0, np.uint8), string keys
   return a
 vec_calc_row = np.vectorize(calc_row, np.dtype(np.uint8).char, excluded = {'y', 'startx', 'size', 'args'}, signature = '()->(n,3)')
 
