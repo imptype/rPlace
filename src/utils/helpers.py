@@ -246,7 +246,7 @@ def calc_row(y, startx, size, args):
   if mask.size:
     a[mask - startx] = vec_calc_cell(mask.astype(str), y = y, args = args) # np.full((size[0], 3), 0, np.uint8), string keys
   return a
-vec_calc_row = np.vectorize(calc_row, np.dtype(np.uint8).char, excluded = {'y', 'startx', 'size', 'args'}, signature = '()->(n,3)')
+vec_calc_row = np.vectorize(calc_row, np.dtype(np.uint8).char, excluded = {'startx', 'size', 'args'}, signature = '()->(n,3)')
 
 def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and startx is given
   size = configs.get('size') or constants.CANVAS_SIZE # these sould be dict[key] db should return a certainty, overriden during sections
@@ -266,7 +266,7 @@ def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and 
   mask = np.intersect1d(np.arange(starty, starty + size[1], dtype = ydtype), tuple(grid)).astype(ydtype) # indexes that exist in grid
   if mask.size:
     a[mask - starty] = vec_calc_row(mask, startx = startx, size = size, args = args) # if check not required if type is specifice
-
+    
   flip = configs.get('flip') or 0
   n = (int(flip) * 2) - 1 # whether to draw upside down or not, if they enabled the setting
   return Image.fromarray(a[::n])
