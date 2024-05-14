@@ -51,14 +51,14 @@ class StartView(discohook.View):
 
     local_id = get_local_id(self.interaction)
     
-    if self.interaction.guild_id:
-      if local_id:
+    if local_id:
+      if self.interaction.guild_id:
         title = 'your Server Canvas'
       else:
-        title = 'the Global Canvas'
+        title = 'your Personal Canvas'
     else:
-      title = 'your Personal Canvas'
-
+        title = 'the Global Canvas'
+    
     size = configs.get('size') or CANVAS_SIZE
     self.embed = discohook.Embed(
       'Welcome to {}!'.format(title),
