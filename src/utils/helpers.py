@@ -40,10 +40,14 @@ def get_local_id(interaction):
     #local_id = convert_text(local_id, string.digits) # unused because it sometimes breaks deta's querying
   return local_id # ^ saves storage
 
-async def get_grid(interaction, force = False):
+async def get_grid(interaction, force = False, override_local_id = None):
 
   app = interaction.client
-  local_id = get_local_id(interaction)
+
+  if override_local_id: # for preview command
+    local_id = override_local_id
+  else:
+    local_id = get_local_id(interaction)
  
   if local_id: # /local-canvas
     if interaction.guild_id: # /local-canvas in guild

@@ -5,7 +5,17 @@ invite_button = discohook.button.link('Invite', url = BOT_INVITE_URL, emoji = '�
 support_button = discohook.button.link('Support', url = BOT_SUPPORT_URL, emoji = '⛑️')
 vote_button = discohook.button.link('Vote', url = BOT_VOTE_URL, emoji = '🏆')
 
-@discohook.command.slash('help', description = 'Guide to using the bot!')
+@discohook.command.slash('help', description = 'Guide to using the bot!',
+  integration_types = [
+    discohook.ApplicationIntegrationType.user,
+    discohook.ApplicationIntegrationType.guild
+  ],
+  contexts = [
+    discohook.InteractionContextType.guild,
+    discohook.InteractionContextType.bot_dm,
+    discohook.InteractionContextType.private_channel
+  ]
+)
 async def help_command(interaction):
   embed = discohook.Embed(
     '📜 Pixel Canvas Help & Information',

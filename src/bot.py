@@ -16,6 +16,7 @@ from .cogs.ping import ping_command
 from .cogs.help import help_command
 from .cogs.canvas import canvas_command
 from .cogs.localcanvas import local_canvas_command
+from .cogs.preview import preview_command
 from .cogs.test import test_command
 from .screens.start import StartView
 from .screens.explore import ExploreView, color_modal, jump_modal
@@ -217,7 +218,8 @@ def run():
     ping_command,
     help_command,
     canvas_command,
-    local_canvas_command
+    local_canvas_command,
+    preview_command
   )
   for command in commands:
     command.checks.append(helpers.maintenance_check)
