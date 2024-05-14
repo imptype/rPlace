@@ -509,12 +509,12 @@ class ExploreView(discohook.View):
 
       text = '🎨 #{:06x}'.format(pixel[0])
 
-      if self.interaction.guild_id: # not in dms
+      is_local_check = is_local(self.interaction)
+      if self.interaction.guild_id or not is_local_check: # not in dms or using global canvas
 
         user_id = revert_text(pixel[3])
         tasks = [get_user_data(self.interaction, user_id)]
 
-        is_local_check = is_local(self.interaction)
         if not is_local_check: # not local canvas command
           if len(pixel) == 5: # from user DMs, 0 1 2 3, 4 guild id not included
             guild_id = revert_text(pixel[4])
@@ -534,7 +534,7 @@ class ExploreView(discohook.View):
               thumbnail_url = user_data[1]
         else: # this is global canvas, include guild as well, no matter if DMs
           if len(pixel) == 4: # from user DMs, 0 1 2 3, guild id not included
-            guild_text = '*Bot\'s DMs*'
+            guild_text = '*User\'s DMs*'
           else:
             guild_data = results[1] # None or Name, Hash
             if guild_data:
