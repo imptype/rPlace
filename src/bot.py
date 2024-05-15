@@ -127,6 +127,8 @@ def run():
           text += '\t{} skipped.'.format(len(frame.tb_frame.f_locals) - 100)
           break
       frame = frame.tb_next
+      if not frame:
+        break
     text += ''.join(trace[-2:])
     print(text)
     print('Now vs when:', datetime.datetime.fromtimestamp(interaction.created_at), datetime.datetime.utcnow())

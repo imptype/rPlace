@@ -91,6 +91,8 @@ async def get_grid(interaction, force = False, override_local_id = None):
             refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
             if tile_count:
               grid_data[1]['count'] = tile_count # edit configs, put number of expected values in each tile in configs for reset attribute
+          else:
+            refresh_at = refresh_cache[local_id]
         except Exception as e:
           raise e
         finally:
@@ -110,7 +112,11 @@ async def get_grid(interaction, force = False, override_local_id = None):
         defer_task.cancel()
       
       if asyncio.get_event_loop() == fetch_task._loop:
-        grid_data, refresh_at = await fetch_task
+        try:
+          grid_data, refresh_at = await fetch_task
+        except RuntimeError as e:
+          print('Skipping impossible runtime error:', e)
+          grid_data, refresh_at = await fetch()
       else:
         grid_data, refresh_at = fetch_task._loop.run_until_complete(fetch_task)
   
