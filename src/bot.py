@@ -137,9 +137,9 @@ def run():
     content = 'Test ' if app.test else ''
     try:
       if interaction.responded:
-        respond = interaction.response.followup('Sorry, an error has occured (after responding).')
+        respond = interaction.response.followup('Sorry, an error has occurred (after responding).')
       else:
-        respond = interaction.response.send('Sorry, an error has occured.')
+        respond = interaction.response.send('Sorry, an error has occurred.')
     except:
       content += '(failed)'
     log = app.error_webhook.send(content.strip(), file = discohook.File('error.txt', content = text.encode()))
