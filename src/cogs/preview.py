@@ -30,7 +30,10 @@ async def preview_command(interaction, server_id):
 
   (grid, configs), defer_response, refresh_at = await get_grid(interaction, override_local_id = server_id)
 
-  if grid: # grid exists
+  keys = set(grid.keys())
+  keys.remove(0)
+
+  if grid and (keys or grid[0]): # grid exists such that any other column exists apart from y 0
     
     share = configs.get('share') or 0
 
@@ -45,7 +48,12 @@ async def preview_command(interaction, server_id):
 
       size = configs.get('size') or CANVAS_SIZE
 
-      tile = next(iter(next(iter(grid.values())).values()))
+      if keys and 0 in grid:
+        i = iter(grid.values())
+        next(i)
+        tile = next(iter(next(i).values())) # avoid empty 0 row for config values
+      else:
+        tile = next(iter(next(iter(grid.values())).values()))
 
       if len(tile) > 3 and isinstance(tile[-1], int): # ignore reset values
         offset = 1
@@ -55,11 +63,18 @@ async def preview_command(interaction, server_id):
       n = len(tile) - offset
 
       if n == 3:
-        name, icon = await get_user_data(interaction, server_id)
-        fmt = '{}'
+        user_data = await get_user_data(interaction, server_id)
+        if user_data:
+          name, icon = user_data
+        else:
+          name, icon = 'Unknown User', None
       elif n == 4:
-        name, icon = await get_guild_data(interaction, server_id)
-        icon = 'https://cdn.discordapp.com/icons/{}/{}.png'.format(server_id, icon) # icon hash
+        guild_data = await get_guild_data(interaction, server_id)
+        if guild_data:
+          name, icon = guild_data
+          icon = 'https://cdn.discordapp.com/icons/{}/{}.png'.format(server_id, icon) # icon hash
+        else:
+          name, icon = 'Unknown Server', None
       else:
         raise ValueError('unexpected tile count', tile)
 
@@ -83,7 +98,8 @@ async def preview_command(interaction, server_id):
         ]),
         color = COLOR_BLURPLE
       )
-      embed.set_thumbnail(icon)
+      if icon:
+        embed.set_thumbnail(icon)
 
       def blocking():
         im = draw_map(grid, configs)

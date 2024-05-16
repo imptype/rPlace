@@ -34,28 +34,41 @@ class Database(Deta):
       'exist' : False, # when updating row, if y0 row exists, this will be True
       'local' : bool(local_id) # used for draw grid/skip the reset check
     }
-    results = (await self.pixels.fetch([query]))['items']
-    if results:
-      # extract configs from first record [Y0]
-      if results[0]['key'].startswith('000'): # ensure it is Y 0
-        configs['size'] = results[0].pop('size', CANVAS_SIZE)
-        if isinstance(configs['size'], int): # legacy sizes
-          configs['size'] = (configs['size'], configs['size'])
-        configs['cooldown'] = results[0].pop('cooldown', None)
-        configs['reset'] = results[0].pop('reset', 0)
-        configs['flip'] = results[0].pop('flip', 0)
-        configs['spawn'] = results[0].pop('spawn', None)
-        configs['allowed'] = results[0].pop('allowed', None) # id is string because > 16
-        configs['whiteout'] = results[0].pop('whiteout', None)
-        configs['noedit'] = results[0].pop('noedit', 0)
-        configs['share'] = results[0].pop('share', 0)
-        configs['exist'] = True
-      for record in results:
-        y = record['key'].split(' ')[0] # incase local id exists, it just gets the Y value
-        y = int(''.join([y[:-1].lstrip('0'), y[-1]])) # convert 000, 020 to 0, 20
-        del record['key']
-        del record['local_id']
-        grid[y] = record
+    last = None
+    loops = 0
+    max_loops = 10 # hard limit for now
+    while True: # until query stops
+      response = (await self.pixels.fetch([query], last = last))
+      if not local_id: # pagination currently only applied to global canvas, in future update it for 5k pixel servers
+        last = response.get('paging', {}).get('last')
+
+      results = response['items']
+      if results:
+        # extract configs from first record [Y0]
+        if results[0]['key'].startswith('000'): # ensure it is Y 0
+          configs['size'] = results[0].pop('size', CANVAS_SIZE)
+          if isinstance(configs['size'], int): # legacy sizes
+            configs['size'] = (configs['size'], configs['size'])
+          configs['cooldown'] = results[0].pop('cooldown', None)
+          configs['reset'] = results[0].pop('reset', 0)
+          configs['flip'] = results[0].pop('flip', 0)
+          configs['spawn'] = results[0].pop('spawn', None)
+          configs['allowed'] = results[0].pop('allowed', None) # id is string because > 16
+          configs['whiteout'] = results[0].pop('whiteout', None)
+          configs['noedit'] = results[0].pop('noedit', 0)
+          configs['share'] = results[0].pop('share', 0)
+          configs['exist'] = True
+        for record in results:
+          y = record['key'].split(' ')[0] # incase local id exists, it just gets the Y value
+          y = int(''.join([y[:-1].lstrip('0'), y[-1]])) # convert 000, 020 to 0, 20
+          del record['key']
+          assert record['local_id'] == local_id, 'different local id encountered somehow' # raise to prevent messing up data
+          del record['local_id']
+          grid[y] = record
+      loops += 1
+      if not last or loops == max_loops:
+        break
+
     return grid, configs
   
   async def update_configs(self, local_id, exists, config, value):

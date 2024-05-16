@@ -144,6 +144,8 @@ async def place_button(interaction):
   
   (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
 
+  print('this local id in user canvas', local_id)
+
   whiteout = configs.get('whiteout')
   if whiteout: # override with whiteout color
     color = whiteout
@@ -171,6 +173,7 @@ async def place_button(interaction):
     return await move(interaction, 0, 0) # magnitude doesnt matter
 
   row = grid.get(y)
+  print('this is row', row)
   x_key = str(x)
   if row: # reuse this bool value for later, and wont be empty, will be None or have values in it
     tile = row.get(x_key)
@@ -246,6 +249,7 @@ async def place_button(interaction):
   if row or (not y and configs['exist']) : # row exists or if configs exist when y is 0
     task1 = interaction.client.db.update_tile(local_id, y, x, tile)
   else:
+    print('create row with these configs', local_id, y, x, tile)
     task1 = interaction.client.db.create_row(local_id, y, x, tile)
   
   # update row/cache
