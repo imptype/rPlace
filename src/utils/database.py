@@ -31,7 +31,7 @@ class Database(Deta):
     
     grid = {}
     configs = {
-      'exist' : False, # when updating row, if y0 row exists, this will be True
+      'exist' : False, # if y0 row exists, this will be True, used when updating y0/configs
       'local' : bool(local_id) # used for draw grid/skip the reset check
     }
     last = None

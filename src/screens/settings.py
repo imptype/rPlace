@@ -73,9 +73,8 @@ async def resize_modal(interaction, x, y):
     return await interaction.response.send('The canvas is already the size `{}x{}`!! Reopen the menu if you think this message outdated.'.format(x, y), ephemeral = True)  
   
   # update if y0 exists, extremely rare to error and autofixes on next move
-  exists = 0 in grid
   size = list(size) # explicitly be list not tuple, despite being read only, to be consistent with db return value
-  await interaction.client.db.update_configs(local_id, exists, 'size', size)
+  await interaction.client.db.update_configs(local_id, configs['exist'], 'size', size)
   configs['size'] = size  
 
   # always draw because size changed
@@ -125,8 +124,7 @@ async def cooldown_modal(interaction, cooldown):
     return await interaction.response.send('The canvas is already the cooldown `{}`!! Reopen the menu if you think this message outdated.'.format(cooldown), ephemeral = True)  
   
   # update if y0 exists, extremely rare to error and autofixes on next move
-  exists = 0 in grid
-  await interaction.client.db.update_configs(local_id, exists, 'cooldown', cooldown)
+  await interaction.client.db.update_configs(local_id, configs['exist'], 'cooldown', cooldown)
   configs['cooldown'] = cooldown  
 
   # skip drawing if old refresh is more up to date / wont happen because we force fetched
@@ -168,8 +166,7 @@ async def reset_modal(interaction, text):
   reset += 1
 
   # update if y0 exists, extremely rare to error and autofixes on next move, can be spammed a lot, add guild-based debounce in future
-  exists = 0 in grid
-  await interaction.client.db.update_configs(local_id, exists, 'reset', reset)
+  await interaction.client.db.update_configs(local_id, configs['exist'], 'reset', reset)
   configs['reset'] = reset
 
   # skip drawing if old refresh is more up to date / wont happen because we force fetched
@@ -197,8 +194,7 @@ async def flip_button(interaction):
   flip = int(not flip)
 
   # update if y0 exists, extremely rare to error and autofixes on next move, can be spammed a lot, add guild-based debounce in future
-  exists = 0 in grid
-  await interaction.client.db.update_configs(local_id, exists, 'flip', flip)
+  await interaction.client.db.update_configs(local_id, configs['exist'], 'flip', flip)
   configs['flip'] = flip
 
   # skip drawing if old refresh is more up to date / wont happen because we force fetched/flipped
@@ -254,8 +250,7 @@ async def spawn_modal(interaction, x, y):
     return await interaction.response.send('The canvas spawn is already `({}, {})`!! Reopen the menu if you think this message outdated.'.format(x, y), ephemeral = True)  
   
   # update if y0 exists, extremely rare to error and autofixes on next move
-  exists = 0 in grid
-  await interaction.client.db.update_configs(local_id, exists, 'spawn', spawn)
+  await interaction.client.db.update_configs(local_id, configs['exist'], 'spawn', spawn)
   configs['spawn'] = spawn
 
   # always draw because we force fetched, this can be improved if we save part of a 256 char hash in 100 char id
@@ -313,9 +308,8 @@ async def allowed_modal(interaction, allowed):
       return await interaction.response.send('Could not find the role with id `{0}` in your server. Are you sure this role (<@&{0}>) exists?'.format(allowed), ephemeral = True)  
 
   # update if y0 exists, extremely rare to error and autofixes on next move
-  exists = 0 in grid
   allowed = None if allowed == '0' else allowed # stored as string because > 16 isnt counted
-  await interaction.client.db.update_configs(local_id, exists, 'allowed', allowed)
+  await interaction.client.db.update_configs(local_id, configs['exist'], 'allowed', allowed)
   configs['allowed'] = allowed  
 
   # skip drawing if old refresh is more up to date / wont happen because we force fetched
@@ -372,8 +366,7 @@ async def whiteout_modal(interaction, whiteout):
     return await interaction.response.send((no_text if whiteout is None else yes_text) + '!' + end_text, ephemeral = True)
   
   # update if y0 exists, extremely rare to error and autofixes on next move
-  exists = 0 in grid
-  await interaction.client.db.update_configs(local_id, exists, 'whiteout', whiteout)
+  await interaction.client.db.update_configs(local_id, configs['exist'], 'whiteout', whiteout)
   configs['whiteout'] = whiteout  
 
   # skip drawing if old refresh is more up to date / wont happen because we force fetched
@@ -401,8 +394,7 @@ async def noedit_button(interaction):
   noedit = int(not noedit)
 
   # update if y0 exists, extremely rare to error and autofixes on next move, can be spammed a lot, add guild-based debounce in future
-  exists = 0 in grid
-  await interaction.client.db.update_configs(local_id, exists, 'noedit', noedit)
+  await interaction.client.db.update_configs(local_id, configs['exist'], 'noedit', noedit)
   configs['noedit'] = noedit
 
   # skip drawing if old refresh is more up to date / wont happen because we force fetched
@@ -421,8 +413,7 @@ async def share_button(interaction):
   share = int(not share)
 
   # update if y0 exists, extremely rare to error and autofixes on next move, can be spammed a lot, add guild-based debounce in future
-  exists = 0 in grid
-  await interaction.client.db.update_configs(local_id, exists, 'share', share)
+  await interaction.client.db.update_configs(local_id, configs['exist'], 'share', share)
   configs['share'] = share
 
   # skip drawing if old refresh is more up to date / wont happen because we force fetched
