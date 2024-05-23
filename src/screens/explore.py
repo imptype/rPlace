@@ -490,7 +490,7 @@ class ExploreView(discohook.View):
           x = int(spawn[0])
           if x > xborder:
             x = xborder
-        if spawn[1] == '?':
+        if spawn[-1] == '?': # -1 because its ?_?
           y = random.randint(0, yborder)
         else:
           y = int(spawn[-1])
