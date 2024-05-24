@@ -271,7 +271,8 @@ def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and 
     count
   )
 
-  if configs.get('flip'): # adjust section starts from
+  if startx and configs.get('flip'): # adjust section starts from if startx given
+    assert starty, 'starty somehow not given but startx was'
     starty = size[1] - starty - 2
 
   ydtype = starty + size[1] > 256 and np.uint16 or np.uint8 # dtype for available rows (Y), we need original size.
