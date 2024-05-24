@@ -596,20 +596,23 @@ class ExploreView(discohook.View):
         startx = size[0] - zoom[0]
         pointer[0] = zoom[0] - (size[0] - x)
 
-      starty = y - radiusy
+      starty = vy - radiusy
       if starty < 0:
         starty = 0
-        pointer[1] = zoom[1] - 1 - y
-      elif y + radiusy > yborder:
+        pointer[1] = zoom[1] - 1 - vy
+      elif vy + radiusy > yborder:
         starty = size[1] - zoom[1]
-        pointer[1] = yborder - y
+        pointer[1] = yborder - vy
+      
+      if flip:
+        pointer[1] = zoom[1] - pointer[1] - 1
 
       # draw canvas
       app = self.interaction.client
       def blocking():
         sconfigs = configs.copy()
         sconfigs['size'] = zoom # override size with zoom, draw_map will use startxy to decide dtypes
-        bim = draw_map(grid, sconfigs, startx, starty, True) # background image
+        bim = draw_map(grid, sconfigs, startx, starty) # background image
 
         # draw cursor if not cached
         n = 8 # cursor is 8px in size
