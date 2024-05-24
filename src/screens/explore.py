@@ -317,6 +317,9 @@ async def jump_modal(interaction, x, y):
   elif not 0 <= y <= yborder:
     return await interaction.response.send('Y coordinate `{}` is out of range!'.format(y), ephemeral = True)
 
+  if configs.get('flip'): # or 0 is unnecessary here
+    y = yborder - y
+
   # always draw because jumping to new x and y coordinate while not going out of border is ensured
   skip_draw = False
 
