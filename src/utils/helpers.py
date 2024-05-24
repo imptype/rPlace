@@ -271,6 +271,9 @@ def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and 
     count
   )
 
+  if configs.get('flip'): # adjust section starts from
+    starty = size[1] - starty - 2
+
   ydtype = starty + size[1] > 256 and np.uint16 or np.uint8 # dtype for available rows (Y), we need original size.
   a = np.full((*size[::-1], 3), 255, np.uint8) # default grid is white pixels
   mask = np.intersect1d(np.arange(starty, starty + size[1], dtype = ydtype), tuple(grid)).astype(ydtype) # indexes that exist in grid
