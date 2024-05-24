@@ -258,7 +258,7 @@ def calc_row(y, startx, size, args):
   return a
 vec_calc_row = np.vectorize(calc_row, np.dtype(np.uint8).char, excluded = {'startx', 'size', 'args'}, signature = '()->(n,3)')
 
-def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and startx is given
+def draw_map(grid, configs, startx = 0, starty = 0, is_section_check = False): # for sections, starty and startx is given
   size = configs.get('size') or constants.CANVAS_SIZE # these sould be dict[key] db should return a certainty, overriden during sections
   local = configs['local'] # determined and will exist by get_grid
   reset = configs.get('reset') # or 0 / doesnt matter for the check later in calc_cell
@@ -271,8 +271,7 @@ def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and 
     count
   )
 
-  if startx and configs.get('flip'): # adjust section starts from if startx given
-    assert starty, 'starty somehow not given but startx was'
+  if is_section_check and configs.get('flip'): # adjust section starts from if startx given
     starty = size[1] - starty - 2
 
   ydtype = starty + size[1] > 256 and np.uint16 or np.uint8 # dtype for available rows (Y), we need original size.

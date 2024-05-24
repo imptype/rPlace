@@ -609,7 +609,7 @@ class ExploreView(discohook.View):
       def blocking():
         sconfigs = configs.copy()
         sconfigs['size'] = zoom # override size with zoom, draw_map will use startxy to decide dtypes
-        bim = draw_map(grid, sconfigs, startx, starty) # background image
+        bim = draw_map(grid, sconfigs, startx, starty, True) # background image
 
         # draw cursor if not cached
         n = 8 # cursor is 8px in size
