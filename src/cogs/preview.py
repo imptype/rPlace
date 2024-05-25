@@ -31,7 +31,7 @@ async def preview_command(interaction, server_id):
   (grid, configs), defer_response, refresh_at = await get_grid(interaction, override_local_id = server_id)
 
   keys = set(grid.keys())
-  keys.remove(0)
+  keys.discard(0)
 
   if grid and (keys or grid[0]): # grid exists such that any other column exists apart from y 0
     
