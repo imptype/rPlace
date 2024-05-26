@@ -14,9 +14,4 @@ from ..utils.constants import COLOR_BLURPLE
   ]
 )
 async def test_command(interaction):
-  await interaction.response.send('test command in dms')
-
-  grid, configs = await interaction.client.db.get_grid()
-  import json
-  with open('test.json', 'w') as f:
-    json.dump(grid, f)
+  await interaction.response.send('test')

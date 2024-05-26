@@ -114,11 +114,13 @@ class TopView(discohook.View):
       for y in grid:
         if y < size[1]: # within bounds of resized grid
           for x in grid[y]:
-            print(x)
             if int(x) < size[0] and (not configs['local'] or ((not reset and len(grid[y][x]) == configs['count']) or grid[y][x][-1] == reset)): # within bounds v2
               if flag:
                 if flag == 2: # [0 color, 1 timestamp, 2 count, 3 userid/None when local canvas, 4 guildid/None when local canvas or global canvas dms]
-                  guilds[grid[y][x][4]] += 1
+                  try:
+                    guilds[grid[y][x][4]] += 1 # assumign canvas will never be reset
+                  except: # better to try than test if index [4] does not exist for pixels placed from user dms, maybe faster
+                    pass
                 users[grid[y][x][3]] += 1
               colors[grid[y][x][0]] += 1
               if len(locations) != n:
