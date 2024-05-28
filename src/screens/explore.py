@@ -124,7 +124,7 @@ def cooldown_embed(interaction, ends_at, remaining, code = 1):
     embed.color = COLOR_RED
   embed.description += '\n\n' + '\n'.join([
     'You are on a cooldown{}'.format('!' * code),
-    'Ends: <t:{}:R> (`{:.2f}s`)'.format(ends_at, remaining)
+    'Ends: <t:{}:R> (`{:.2f}s`)'.format(ends_at - 3, remaining) # minus 3 because of discord delay/inaccurate with formatting
   ])
   embed.set_image('attachment://map.png')
   return embed

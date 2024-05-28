@@ -17,6 +17,7 @@ from .cogs.help import help_command
 from .cogs.canvas import canvas_command
 from .cogs.localcanvas import local_canvas_command
 from .cogs.preview import preview_command
+from .cogs.color import color_command
 from .cogs.test import test_command
 from .screens.start import StartView
 from .screens.explore import ExploreView, color_modal, jump_modal
@@ -221,7 +222,8 @@ def run():
     help_command,
     canvas_command,
     local_canvas_command,
-    preview_command
+    preview_command,
+    color_command
   )
   for command in commands:
     command.checks.append(helpers.maintenance_check)

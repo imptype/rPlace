@@ -1,8 +1,6 @@
 import discohook
-from ..utils.helpers import get_grid
-from ..utils.constants import COLOR_BLURPLE
 
-@discohook.command.slash('test', description = 'Test stuff!',
+@discohook.command.slash('color', description = 'Generate a color!',
   integration_types = [
     discohook.ApplicationIntegrationType.user,
     discohook.ApplicationIntegrationType.guild
@@ -13,7 +11,5 @@ from ..utils.constants import COLOR_BLURPLE
     discohook.InteractionContextType.private_channel
   ]
 )
-async def test_command(interaction):
-  import time
-  now = int(time.time())
-  await interaction.response.send('test in 3 seconds {0} <t:{0}:R>'.format(now))
+async def color_command(interaction):
+  await interaction.response.send('color!')
