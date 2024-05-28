@@ -536,7 +536,7 @@ class ExploreView(discohook.View):
         )
 
         if is_local_check: # if local guild canvas, show user avatar url as thumbnail
-          if len(pixel) == 4: # local canvas in guild
+          if (len(pixel) == 4 and isinstance(pixel[-1], str)) or (len(pixel) == 5 and isinstance(pixel[-1], int)): # local canvas in guild
             if user_data:
               thumbnail_url = user_data[1]
         else: # this is global canvas, include guild as well, no matter if DMs
