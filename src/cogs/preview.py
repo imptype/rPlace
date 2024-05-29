@@ -13,6 +13,17 @@ from ..utils.constants import COLOR_BLURPLE, COLOR_ORANGE, COLOR_RED, IMAGE_SIZE
       min_length = 17,
       max_length = 20
     ),
+    discohook.Option.integer(
+      'mode', 'The mode to use. Defaults to 1',
+      choices = [
+        discohook.Choice('1 Default - Shows canvas in regular view', 1),
+        discohook.Choice('2 Black and White - Edited pixels are black', 2)
+        #discohook.Choice('3 Heatmap - Most common pixels are red', 2),
+        #discohook.Choice('4 Heatmap Age - By age instead', 3),
+        #discohook.Choice('5 Users - Shows all pixels placed by same user', 4),
+        #discohook.Choice('6 Guilds - By same guild', 5)
+      ]
+    )
   ],
   integration_types = [
     discohook.ApplicationIntegrationType.user,
@@ -24,7 +35,7 @@ from ..utils.constants import COLOR_BLURPLE, COLOR_ORANGE, COLOR_RED, IMAGE_SIZE
     discohook.InteractionContextType.private_channel
   ]
 )
-async def preview_command(interaction, server_id):
+async def preview_command(interaction, server_id, mode = 1):
   if not server_id.isdecimal():
     return await interaction.response.send('`{}` is not a server ID. Read https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID#h_01HRSTXPS5FSFA0VWMY2CKGZXA'.format(server_id))
 
@@ -81,20 +92,26 @@ async def preview_command(interaction, server_id):
       reset = configs.get('reset')
       count = configs.get('count')
 
-      tile_count = sum(
-        1
-        for y in grid
-        if y < size[1]
-        for x in grid[y]
-        if int(x) < size[0] and ((not reset and len(grid[y][x]) == count) or grid[y][x][-1] == reset)
-      )
-      
+
+      if mode in (1, 2):
+        tile_count = sum(
+          1
+          for y in grid
+          if y < size[1]
+          for x in grid[y]
+          if int(x) < size[0] and ((not reset and len(grid[y][x]) == count) or grid[y][x][-1] == reset)
+        )
+
+        description = 'Pixels filled: {}%'.format('{:.2f}'.format((tile_count / (size[0] * size[1])) * 100).rstrip('0').removesuffix('.'))
+      else:
+        raise ValueError('mode not supported', mode)
+
       embed = discohook.Embed(
       '{}\'s Canvas'.format(name),
         description = '\n'.join([
           'Canvas size: {}x{}'.format(*size),
           '',
-          'Pixels filled: {}%'.format('{:.2f}'.format((tile_count / (size[0] * size[1])) * 100).rstrip('0').removesuffix('.'))
+          description
         ]),
         color = COLOR_BLURPLE
       )
@@ -102,7 +119,15 @@ async def preview_command(interaction, server_id):
         embed.set_thumbnail(icon)
 
       def blocking():
-        im = draw_map(grid, configs)
+        if mode == 1:
+          im = draw_map(grid, configs)
+        elif mode == 2:
+          sconfigs = configs.copy() # flags that every placed pixel should be black
+          sconfigs['bw'] = True
+          im = draw_map(grid, sconfigs)
+          embed.set_footer('Preview Mode: 2 - Black & White')
+        else:
+          raise ValueError('mode draw method not found', mode)
         factor = IMAGE_SIZE // max(size)
         resize = (size[0] * factor, size[1] * factor)
         if size != resize:

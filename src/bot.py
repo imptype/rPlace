@@ -23,6 +23,7 @@ from .screens.start import StartView
 from .screens.explore import ExploreView, color_modal, jump_modal
 from .screens.top import TopView
 from .screens.settings import SettingsView, resize_modal, cooldown_modal, reset_modal, spawn_modal, allowed_modal, whiteout_modal
+from .screens.color import ColorView
 
 class CustomMiddleware(BaseHTTPMiddleware):
   # new session per threadid/event loop that uses same app instance
@@ -207,6 +208,7 @@ def run():
   app.load_view(ExploreView())
   app.load_view(TopView())
   app.load_view(SettingsView())
+  app.load_view(ColorView())
   app.active_components[color_modal.custom_id] = color_modal
   app.active_components[jump_modal.custom_id] = jump_modal
   app.active_components[resize_modal.custom_id] = resize_modal
@@ -223,7 +225,7 @@ def run():
     canvas_command,
     local_canvas_command,
     preview_command,
-    color_command
+    #color_command
   )
   for command in commands:
     command.checks.append(helpers.maintenance_check)

@@ -1,19 +1,24 @@
+import io
+import asyncio
 import discohook
-from ..utils.helpers import get_grid
-from ..utils.constants import COLOR_BLURPLE
+from PIL import Image
 
-@discohook.command.slash('test', description = 'Test stuff!',
-  integration_types = [
-    discohook.ApplicationIntegrationType.user,
-    discohook.ApplicationIntegrationType.guild
-  ],
-  contexts = [
-    discohook.InteractionContextType.guild,
-    discohook.InteractionContextType.bot_dm,
-    discohook.InteractionContextType.private_channel
-  ]
-)
+@discohook.button.new('clear', custom_id = 'clear_button:v3.7')
+async def clear_button(interaction):
+  await interaction.response.update_message('cleared attachments', files = None)
+
+@discohook.command.slash('test', description = 'Test stuff!')
 async def test_command(interaction):
-  import time
-  now = int(time.time())
-  await interaction.response.send('test in 3 seconds {0} <t:{0}:R>'.format(now))
+
+  def blocking():
+    im = Image.new('RGB', (1000, 500), (0, 255, 255)) # color is cyan
+    buffer = io.BytesIO()
+    im.save(buffer, 'PNG')
+    return buffer
+
+  buffer = await asyncio.to_thread(blocking)
+  file = discohook.File('color.png', content = buffer.getvalue())
+
+  view = discohook.View()
+  view.add_buttons(clear_button)
+  await interaction.response.send(file = file, view = view)

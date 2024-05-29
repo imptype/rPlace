@@ -236,7 +236,11 @@ def revert_text(text):
 #   return result
 
 def calc_cell(x, y, args): # x here is string, y is int, as grid is {y (int) : {x (str) : [rgb cells]}}, args is grid, local, reset, count
-  return np.array(((args[0][y][x][0] >> 16) & 255, (args[0][y][x][0] >> 8) & 255, args[0][y][x][0] & 255), np.uint8) if (
+  return np.array(
+    (
+      (0, 0, 0)
+      if args[4] else ((args[0][y][x][0] >> 16) & 255, (args[0][y][x][0] >> 8) & 255, args[0][y][x][0] & 255)
+    ), np.uint8) if (
     x in args[0][y] and (
       not args[1] or ( # ignore reset logic below if global canvas
         (
@@ -263,12 +267,15 @@ def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and 
   local = configs['local'] # determined and will exist by get_grid
   reset = configs.get('reset') # or 0 / doesnt matter for the check later in calc_cell
   count = configs.get('count') # will be None for snapshots, ensure 'local' doesn't work first before reaching this point
+  bw = configs.get('bw') # will be None of not black white mode
+  print('this is bw', bw)
   
   args = ( # list of other args for ease of access in calc_cell
     grid, # dictmap
     local,
     reset,
-    count
+    count,
+    bw
   )
 
   ydtype = starty + size[1] > 256 and np.uint16 or np.uint8 # dtype for available rows (Y), we need original size.

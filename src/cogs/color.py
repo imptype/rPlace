@@ -1,4 +1,5 @@
 import discohook
+from ..screens.color import ColorView
 
 @discohook.command.slash('color', description = 'Generate a color!',
   integration_types = [
@@ -12,4 +13,4 @@ import discohook
   ]
 )
 async def color_command(interaction):
-  await interaction.response.send('color!')
+  await ColorView(interaction).send()
