@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import aiohttp
 import asyncio
 import datetime
@@ -25,21 +26,38 @@ from .screens.top import TopView
 from .screens.settings import SettingsView, resize_modal, cooldown_modal, reset_modal, spawn_modal, allowed_modal, whiteout_modal, expire_modal
 from .screens.color import ColorView
 
+expire_time = 5 # safe for deta
+
 class CustomMiddleware(BaseHTTPMiddleware):
   # new session per threadid/event loop that uses same app instance
-  async def dispatch(self, request, call_next):
+  async def dispatch(self, request, call_next): # keeps session open until request is completed, 10 seconds
     if not hasattr(request.app.http, 'initial_session'):
       request.app.http.initial_session = request.app.http.session
+      request.app.http.sessions.append((time.time(), request.app.http.session)) # timed out too
+
+    now = time.time()
+
     request.app.http.session = aiohttp.ClientSession('https://discord.com') # s[key]
-    request.app.http.sessions.add(request.app.http.session)
+    request.app.http.sessions.append((now, request.app.http.session))
+
     request.app.db = database.Database(request.app, os.getenv('DB')) # s[key]
-    request.app.dbs.add(request.app.db)
+    request.app.dbs.append((now, request.app.db))
+
+    for sessions in (request.app.http.sessions, request.app.dbs): # cleanup
+      indexes_to_remove = []
+      for i, (timestamp, session) in enumerate(sessions):
+        if timestamp + expire_time < now:
+          await session.close()
+          indexes_to_remove.append(i)
+      for i in reversed(indexes_to_remove):
+        del sessions[i]
+    
     return await call_next(request)
 
 def run():
 
-  discohook.Client.dbs = set()
-  discohook.https.HTTPClient.sessions = set()
+  discohook.Client.dbs = []
+  discohook.https.HTTPClient.sessions = []
 
   """# monkeypatch discohook.https.HTTPClient.session to use different sessions based on current thread id
   def getter(self):
@@ -78,8 +96,9 @@ def run():
       print('Closed without errors.')
     finally:
       print('Closing sessions:', app.http.sessions, app.dbs, app.http.session)
-      for session in app.http.sessions | app.dbs:
-        await session.close() # close aiohttp and deta sessions
+      for sessions in (app.http.sessions, app.dbs):
+        for (_timestamp, session) in sessions:
+          await session.close() # close aiohttp and deta sessions
       await getattr(app.http, 'initial_session', app.http.session).close()
 
   # Define the bot

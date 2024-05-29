@@ -538,7 +538,7 @@ class SettingsView(discohook.View):
         'Enable/disable being able to view your canvas from other servers using the /preview command.',
         '',
         '**[10] Set Message Expiry (Current: `{} seconds`)**'.format(expire),
-        'Set local canvas messages to expire between 0 seconds to 24 hours after the command is used. When the message expires, it will return to the start screen but with buttons removed.'
+        'Set local canvas messages to expire between 0 seconds to 24 hours after the command is used. When the message expires, it will return to the start screen but with buttons removed. Default is 0, which means the message will never expire.'
       ]),
       color = COLOR_RED
     )
