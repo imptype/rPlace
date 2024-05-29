@@ -41,7 +41,7 @@ class StartView(discohook.View):
     else: # persistent
       self.add_buttons(explore_button, top_button, settings_button, refresh_button)
 
-  async def setup(self, refresh_data = None): # ainit
+  async def setup(self, refresh_data = None, expired = False): # ainit
     
     if refresh_data:
       (grid, configs), self.defer_response, refresh_at, skip_draw = refresh_data
@@ -60,15 +60,15 @@ class StartView(discohook.View):
         title = 'the Global Canvas'
     
     size = configs.get('size') or CANVAS_SIZE
+    text = '' if expired else '\n\nClick 🔍 **Explore** to start exploring!'
+
     self.embed = discohook.Embed(
       'Welcome to {}!'.format(title),
-      description = '\n'.join([
-        'Canvas size: {}x{}'.format(*size),
-        '',
-        'Click 🔍 **Explore** to start exploring!'
-      ]),
+      description = 'Canvas size: {}x{}'.format(*size) + text,
       color = COLOR_BLURPLE
     )
+    if expired:
+      self.embed.set_footer('Interaction has expired, run the command again.')
 
     if skip_draw:
       self.embed.set_image('attachment://map.png')
@@ -110,9 +110,9 @@ class StartView(discohook.View):
     else:
       await self.interaction.response.send(embed = self.embed, view = self)
 
-  async def update(self, refresh_data = None):
-    await self.setup(refresh_data)
+  async def update(self, refresh_data = None, expired = False):
+    await self.setup(refresh_data, expired)
     if self.defer_response:
       await self.defer_response.edit(embed = self.embed, view = self)
     else:
-      await self.interaction.response.update_message(embed = self.embed, view = self)
+      await self.interaction.response.update_message(embed = self.embed, view = None if expired else self)

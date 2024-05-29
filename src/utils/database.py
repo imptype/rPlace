@@ -57,6 +57,7 @@ class Database(Deta):
           configs['whiteout'] = results[0].pop('whiteout', None)
           configs['noedit'] = results[0].pop('noedit', 0)
           configs['share'] = results[0].pop('share', 0)
+          configs['expire'] = results[0].pop('expire', 0)
           configs['exist'] = True
         for record in results:
           y = record['key'].split(' ')[0] # incase local id exists, it just gets the Y value

@@ -268,7 +268,6 @@ def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and 
   reset = configs.get('reset') # or 0 / doesnt matter for the check later in calc_cell
   count = configs.get('count') # will be None for snapshots, ensure 'local' doesn't work first before reaching this point
   bw = configs.get('bw') # will be None of not black white mode
-  print('this is bw', bw)
   
   args = ( # list of other args for ease of access in calc_cell
     grid, # dictmap

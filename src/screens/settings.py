@@ -18,7 +18,8 @@ def get_values(interaction):
     'allowed' : c[6],
     'whiteout' : int(c[7]) if c[7].isdecimal() else None, # number or "x" for None, can do if == 'x' instead too
     'noedit' : int(c[8]),
-    'share' : int(c[9])
+    'share' : int(c[9]),
+    'expire' : int(c[10])
   }
   refresh_at = c[-1] # so far isnt being used in any settings
   return timestamp, data, refresh_at
@@ -422,6 +423,15 @@ async def share_button(interaction):
   # all good, update view
   refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
   await SettingsView(interaction).update(refresh_data)
+
+@discohook.button.new('Set Expire Time', emoji = '🪣', custom_id = 'admin_expire:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+async def expire_button(interaction):
+  modal = discohook.Modal(
+    whiteout_modal.title,
+    custom_id = '{}:{}'.format(whiteout_modal.custom_id, get_values(interaction)[0])
+  )
+  modal.rows.append(whiteout_field.to_dict())
+  await interaction.response.send_modal(modal)
 
 class SettingsView(discohook.View):
   def __init__(self, interaction = None):
