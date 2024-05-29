@@ -424,13 +424,55 @@ async def share_button(interaction):
   refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
   await SettingsView(interaction).update(refresh_data)
 
-@discohook.button.new('Set Expire Time', emoji = '🪣', custom_id = 'admin_expire:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
+expire_field = discohook.TextInput('Expire Seconds', 'expire', hint = 'A number in the range of 0-86400', min_length = 1, max_length = 5, required = True)
+@discohook.modal.new('Expire Modal', fields = [], custom_id = 'admin_expire_modal:v{}'.format(BOT_VERSION))
+async def expire_modal(interaction, expire):
+
+  # validate timestamp
+  try:
+    timestamp, data, _refresh_at = get_values(interaction) # message values
+    assert int(interaction.data['custom_id'].split(':')[-1]) == timestamp # compares ms timestamp with ms timestamp
+  except: # index error = wrong screen, assert error = wrong timestamp
+    return await interaction.response.send('The Expire Modal has expired!', ephemeral = True)
+
+  # validate integers, accepts numbers from other languages
+  if not expire.isdecimal():
+    return await interaction.response.send('Expire `{}` is not a number!'.format(expire), ephemeral = True)
+  expire = int(expire)
+
+  # validate new cooldown prevent 2 request
+  if expire == data['expire']:
+    return await interaction.response.send('The canvas expire time is already `{}`! Reopen the menu if you think this message outdated.'.format(expire), ephemeral = True)  
+  
+  # validate the range
+  if not 0 <= expire <= 86400: # 24 * 60 * 60
+    return await interaction.response.send('Expire `{}` is out of range!'.format(expire), ephemeral = True)
+
+  # fetch up to date grid for configs, validate new size again, prevent 1 request, can be spammed but unlikely
+  (grid, configs), defer_response, new_refresh_at, local_id = await get_grid(interaction, True)
+  if expire == (configs.get('expire') or 0): # should be None if never used or 0 if reset back
+    return await interaction.response.send('The canvas is already the expire `{}`!! Reopen the menu if you think this message outdated.'.format(expire), ephemeral = True)  
+  
+  # update if y0 exists, extremely rare to error and autofixes on next move
+  await interaction.client.db.update_configs(local_id, configs['exist'], 'expire', expire)
+  configs['expire'] = expire  
+
+  # skip drawing if old refresh is more up to date / wont happen because we force fetched
+  skip_draw = False #refresh_at >= new_refresh_at
+
+  # all good, update view
+  refresh_data = (grid, configs), defer_response, new_refresh_at, skip_draw
+  await SettingsView(interaction).update(refresh_data)
+  
+@discohook.button.new('Set Expire Time', emoji = '⏱️', custom_id = 'admin_expire:v{}'.format(BOT_VERSION), style = discohook.ButtonStyle.red)
 async def expire_button(interaction):
+  if not interaction.guild_id:
+    return await interaction.response.send('Expire setting is not available for DM canvases.', ephemeral = True)
   modal = discohook.Modal(
-    whiteout_modal.title,
-    custom_id = '{}:{}'.format(whiteout_modal.custom_id, get_values(interaction)[0])
+    expire_modal.title,
+    custom_id = '{}:{}'.format(expire_modal.custom_id, get_values(interaction)[0])
   )
-  modal.rows.append(whiteout_field.to_dict())
+  modal.rows.append(expire_field.to_dict())
   await interaction.response.send_modal(modal)
 
 class SettingsView(discohook.View):
@@ -439,7 +481,7 @@ class SettingsView(discohook.View):
     if interaction:
       self.interaction = interaction
     else: # persistent
-      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button, spawn_button, allowed_button, whiteout_button, noedit_button, share_button)
+      self.add_buttons(back_button, resize_button, cooldown_button, reset_button, flip_button, spawn_button, allowed_button, whiteout_button, noedit_button, share_button, expire_button)
 
   async def setup(self, refresh_data): # ainit
 
@@ -462,6 +504,7 @@ class SettingsView(discohook.View):
     whiteout = configs.get('whiteout') # can be a number including 0 or None
     noedit = configs.get('noedit') or 0 # kind of reversed, if 1 = they cant edit
     share = configs.get('share') or 0 # 0 = can be shared, 1 = cant be shared, whether your canvas can be viewed from other servers using the /preview command, default is shareable
+    expire = configs.get('expire') or 0
     self.embed = discohook.Embed(
       'Pixel Canvas Local Settings',
       description = '\n'.join([
@@ -492,7 +535,10 @@ class SettingsView(discohook.View):
         'Enable/disable being able to place pixels on the canvas at all.',
         '',
         '**[9] Toggle Canvas Shareable (Current: `{}`)**'.format(bool(not share)),
-        'Enable/disable being able to view your canvas from other servers using the /preview command.'
+        'Enable/disable being able to view your canvas from other servers using the /preview command.',
+        '',
+        '**[10] Set Message Expiry (Current: `{} seconds`)**'.format(expire),
+        'Set local canvas messages to expire between 0 seconds to 24 hours after the command is used. When the message expires, it will return to the start screen but with buttons removed.'
       ]),
       color = COLOR_RED
     )
@@ -519,12 +565,12 @@ class SettingsView(discohook.View):
     dynamic_back_button = discohook.Button(
       back_button.label,
       emoji = back_button.emoji,
-      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, spawn, allowed or '0', 'x' if whiteout is None else whiteout, noedit, share, new_refresh_at)
+      custom_id = '{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}'.format(back_button.custom_id, int(time.time() * 10 ** 7), size[0], size[1], cooldown, reset, spawn, allowed or '0', 'x' if whiteout is None else whiteout, noedit, share, expire, new_refresh_at)
     )
 
     self.add_buttons(dynamic_back_button, resize_button, cooldown_button, reset_button)
     self.add_buttons(flip_button, spawn_button, allowed_button, whiteout_button)
-    self.add_buttons(noedit_button, share_button)
+    self.add_buttons(noedit_button, share_button, expire_button)
   
   async def update(self, refresh_data = None):
     await self.setup(refresh_data)

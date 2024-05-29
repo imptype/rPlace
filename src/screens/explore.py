@@ -196,7 +196,6 @@ async def place_button(interaction):
     return await move(interaction, 0, 0) # magnitude doesnt matter
 
   row = grid.get(y)
-  print('this is row', row)
   x_key = str(x)
   if row: # reuse this bool value for later, and wont be empty, will be None or have values in it
     tile = row.get(x_key)
@@ -272,7 +271,6 @@ async def place_button(interaction):
   if row or (not y and configs['exist']) : # row exists or if configs exist when y is 0
     task1 = interaction.client.db.update_tile(local_id, y, x, tile)
   else:
-    print('create row with these configs', local_id, y, x, tile)
     task1 = interaction.client.db.create_row(local_id, y, x, tile)
   
   # update row/cache
@@ -330,6 +328,14 @@ async def jump_modal(interaction, x, y):
     return await interaction.response.send('You are already at tile `({}, {})`!'.format(x, y), ephemeral = True)
 
   (grid, configs), defer_response, new_refresh_at = await get_grid(interaction)
+  if await expire_check(interaction, configs):
+    return
+    
+  if refresh_at > new_refresh_at: # the above is outdated
+    (grid, configs), defer_response, refresh_at, _local_id = await get_grid(interaction, True) # force refresh
+    if await expire_check(interaction, configs):
+      return
+  
   size = configs.get('size') or CANVAS_SIZE
   xborder = size[0] - 1
   yborder = size[1] - 1
@@ -485,7 +491,6 @@ class ExploreView(discohook.View):
       self.add_select(zoom_select)
 
   async def setup(self, data, refresh_data, extra): # ainit
-
     if data:
       x, y, zoom, step, color, old_refresh_at = data
     else: # default, first move
@@ -501,13 +506,13 @@ class ExploreView(discohook.View):
     else:
       (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
       if await expire_check(self.interaction, configs):
-        return
+        return True
       skip_draw = False
       if data: # only if data exists/clicked component on this view, step select, color modal have a chance not to refresh
         if old_refresh_at > refresh_at: # if old/second instance greater than current refresh, it means current/first instance is outdated
           (grid, configs), self.defer_response, refresh_at, _local_id = await get_grid(self.interaction, force = True)
           if await expire_check(self.interaction, configs):
-            return
+            return True
         else:
           skip_draw = True
 
@@ -795,7 +800,8 @@ class ExploreView(discohook.View):
     self.add_select(dynamic_zoom_select)
 
   async def update(self, data = None, refresh_data = None, extra = None): # done in update function, saves pointer memory maybe
-    await self.setup(data, refresh_data, extra) # refresh_data is any component here, excludes from startview
+    if await self.setup(data, refresh_data, extra): # refresh_data is any component here, excludes from startview
+      return # expired
     if self.defer_response: # extra is pixel was already placed, it needs refresh
       await self.defer_response.edit(embed = self.embed, view = self)
     else:
