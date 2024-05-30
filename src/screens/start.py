@@ -96,7 +96,7 @@ class StartView(discohook.View):
     )
 
     is_admin_check = bool(local_id and is_admin(self.interaction)) # checks if they can edit canvas
-
+    
     if is_admin_check:
       self.add_buttons(dynamic_explore_button, top_button, settings_button, refresh_button)
     else:
@@ -113,6 +113,6 @@ class StartView(discohook.View):
   async def update(self, refresh_data = None, expired_defer_response = None):
     await self.setup(refresh_data, expired_defer_response)
     if self.defer_response:
-      await self.defer_response.edit(embed = self.embed, view = self)
+      await self.defer_response.edit(embed = self.embed, view = None if expired_defer_response else self)
     else:
-      await self.interaction.response.update_message(embed = self.embed, view = None if expired else self)
+      await self.interaction.response.update_message(embed = self.embed, view = None if expired_defer_response else self)
