@@ -12,7 +12,7 @@ from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, c
 async def expire_check(interaction, defer_response, configs):
   expire = configs.get('expire') # expire has to be at least 10 minutes in length
   if expire and discohook.utils.snowflake_time(interaction.message.id) + expire < time.time():
-    await start.StartView(interaction).update(None, expired_defer_response) # cant skip draw, no cursor on image
+    await start.StartView(interaction).update(None, defer_response) # cant skip draw, no cursor on image
     return True
 
 def get_values(interaction):
