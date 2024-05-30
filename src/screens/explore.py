@@ -43,7 +43,7 @@ async def move(interaction, dx, dy):
     return
 
   if refresh_at > new_refresh_at: # move expired, so we need to update the grid
-    grid_data, defer_response, new_refresh_at, _local_id = await get_grid(interaction, force = True)
+    grid_data, defer_response, new_refresh_at, _local_id = await get_grid(interaction, True, defer_response = defer_response)
   if await expire_check(interaction, grid_data[1]):
     return
 
@@ -165,7 +165,7 @@ async def place_button(interaction):
   if await expire_check(interaction, configs):
     return
   if refresh_at < now: # the above is not a new refresh
-    (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True) # force refresh
+    (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True, defer_response = defer_response) # force refresh
     if await expire_check(interaction, configs):
       return
 
@@ -332,7 +332,7 @@ async def jump_modal(interaction, x, y):
     return
     
   if refresh_at > new_refresh_at: # the above is outdated
-    (grid, configs), defer_response, refresh_at, _local_id = await get_grid(interaction, True) # force refresh
+    (grid, configs), defer_response, refresh_at, _local_id = await get_grid(interaction, True, defer_response = defer_response) # force refresh
     if await expire_check(interaction, configs):
       return
   
@@ -436,7 +436,7 @@ async def zoom_select(interaction, values):
     return
   
   if refresh_at > new_refresh_at:
-    grid_data, defer_response, new_refresh_at, _local_id = await get_grid(interaction, force = True)
+    grid_data, defer_response, new_refresh_at, _local_id = await get_grid(interaction, True, defer_response = defer_response)
     if await expire_check(interaction, grid_data[1]):
       return
 

@@ -40,7 +40,7 @@ def get_local_id(interaction):
     #local_id = convert_text(local_id, string.digits) # unused because it sometimes breaks deta's querying
   return local_id # ^ saves storage
 
-async def get_grid(interaction, force = False, override_local_id = None):
+async def get_grid(interaction, force = False, override_local_id = None, defer_response = None):
 
   app = interaction.client
 
@@ -68,57 +68,59 @@ async def get_grid(interaction, force = False, override_local_id = None):
 
   grid_data = cache.get(local_id) # grid {}, configs {}
   refresh_at = refresh_cache.get(local_id) # if grid exists, this will too
-  defer_response = None
   now = time.time()
   if force or grid_data is None or refresh_at / 10 ** 7 + app.constants.REFRESH_DEBOUNCE < now:
 
     # before joining queue, check if fetch debounce expired before fetching
     if not force or not grid_data or refresh_at / 10 ** 7 + app.constants.FETCH_DEBOUNCE < now:
-      
-      async def defer(): # avoid deferring if we are fast
-        await asyncio.sleep(1.5 - (time.time() - interaction.created_at) * 2) # 1.5 seconds passed and still fetching = must defer
-
-      async def fetch():
-        lock = app.locks.get(local_id)
-        if not lock:
-          app.locks[local_id] = lock = asyncio.Lock()
-
-        await lock.acquire()
-        try: # while in queue, check if fetch debounce expired before fetching again
-          grid_data = cache.get(local_id)
-          if not grid_data or refresh_cache[local_id] / 10 ** 7 + app.constants.FETCH_DEBOUNCE < time.time(): 
-            cache[local_id] = grid_data = await app.db.get_grid(local_id)
-            refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
-            if tile_count:
-              grid_data[1]['count'] = tile_count # edit configs, put number of expected values in each tile in configs for reset attribute
-          else:
-            refresh_at = refresh_cache[local_id]
-        except Exception as e:
-          raise e
-        finally:
-          lock.release()
-
-        return grid_data, refresh_at
-
-      loop = asyncio.get_event_loop()
-      defer_task = loop.create_task(defer())
-      fetch_task = loop.create_task(fetch())
-
-      done, pending = await asyncio.wait((defer_task, fetch_task), return_when = asyncio.FIRST_COMPLETED)
-      
-      if defer_task in done: # 2 seconds passed
-        defer_response = await interaction.response.defer()
+      if defer_response: # was deferred already
+        grid_data, refresh_at = await fetch()
       else:
-        defer_task.cancel()
-      
-      if asyncio.get_event_loop() == fetch_task._loop:
-        try:
-          grid_data, refresh_at = await fetch_task
-        except RuntimeError as e:
-          print('Skipping impossible runtime error:', e)
-          grid_data, refresh_at = await fetch()
-      else:
-        grid_data, refresh_at = fetch_task._loop.run_until_complete(fetch_task)
+
+        async def defer(): # avoid deferring if we are fast
+          await asyncio.sleep(1.5 - (time.time() - interaction.created_at) * 2) # 1.5 seconds passed and still fetching = must defer
+
+        async def fetch():
+          lock = app.locks.get(local_id)
+          if not lock:
+            app.locks[local_id] = lock = asyncio.Lock()
+
+          await lock.acquire()
+          try: # while in queue, check if fetch debounce expired before fetching again
+            grid_data = cache.get(local_id)
+            if not grid_data or refresh_cache[local_id] / 10 ** 7 + app.constants.FETCH_DEBOUNCE < time.time(): 
+              cache[local_id] = grid_data = await app.db.get_grid(local_id)
+              refresh_cache[local_id] = refresh_at = int(time.time() * 10 ** 7)
+              if tile_count:
+                grid_data[1]['count'] = tile_count # edit configs, put number of expected values in each tile in configs for reset attribute
+            else:
+              refresh_at = refresh_cache[local_id]
+          except Exception as e:
+            raise e
+          finally:
+            lock.release()
+
+          return grid_data, refresh_at
+
+        loop = asyncio.get_event_loop()
+        defer_task = loop.create_task(defer())
+        fetch_task = loop.create_task(fetch())
+
+        done, pending = await asyncio.wait((defer_task, fetch_task), return_when = asyncio.FIRST_COMPLETED)
+        
+        if defer_task in done: # 2 seconds passed
+          defer_response = await interaction.response.defer()
+        else:
+          defer_task.cancel()
+        
+        if asyncio.get_event_loop() == fetch_task._loop:
+          try:
+            grid_data, refresh_at = await fetch_task
+          except RuntimeError as e:
+            print('Skipping impossible runtime error:', e)
+            grid_data, refresh_at = await fetch()
+        else:
+          grid_data, refresh_at = fetch_task._loop.run_until_complete(fetch_task)
   
   if force: # need to return local id too for updating db in settings usually
     return grid_data, defer_response, refresh_at, local_id
