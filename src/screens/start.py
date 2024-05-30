@@ -60,14 +60,14 @@ class StartView(discohook.View):
         title = 'the Global Canvas'
     
     size = configs.get('size') or CANVAS_SIZE
-    text = '' if expired else '\n\nClick 🔍 **Explore** to start exploring!'
+    text = '' if expired_defer_response else '\n\nClick 🔍 **Explore** to start exploring!'
 
     self.embed = discohook.Embed(
       'Welcome to {}!'.format(title),
       description = 'Canvas size: {}x{}'.format(*size) + text,
       color = COLOR_BLURPLE
     )
-    if expired:
+    if expired_defer_response:
       self.embed.set_footer('Interaction has expired, run the command again.')
 
     if skip_draw:
