@@ -41,12 +41,12 @@ class StartView(discohook.View):
     else: # persistent
       self.add_buttons(explore_button, top_button, settings_button, refresh_button)
 
-  async def setup(self, refresh_data = None, expired = False): # ainit
+  async def setup(self, refresh_data = None, expired_defer_response = None): # ainit
     
-    if refresh_data:
+    if refresh_data: # coming back from settings/top
       (grid, configs), self.defer_response, refresh_at, skip_draw = refresh_data
-    else: # not from refresh_button or top back button
-      (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction)
+    else: # not from refresh_button or top back button or expired
+      (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction, defer_response = expired_defer_response)
       skip_draw = False
 
     local_id = get_local_id(self.interaction)
@@ -110,8 +110,8 @@ class StartView(discohook.View):
     else:
       await self.interaction.response.send(embed = self.embed, view = self)
 
-  async def update(self, refresh_data = None, expired = False):
-    await self.setup(refresh_data, expired)
+  async def update(self, refresh_data = None, expired_defer_response = None):
+    await self.setup(refresh_data, expired_defer_response)
     if self.defer_response:
       await self.defer_response.edit(embed = self.embed, view = self)
     else:

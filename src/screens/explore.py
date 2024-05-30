@@ -9,10 +9,10 @@ from . import start # .start.StartView is circular import
 from ..utils.constants import COLOR_BLURPLE, CANVAS_SIZE, IMAGE_SIZE, BOT_VERSION, COLOR_RED, DEFAULT_SPAWN
 from ..utils.helpers import get_grid, is_local, get_user_data, get_guild_data, convert_text, revert_text, draw_map, get_username, get_local_id#, encrypt_text
 
-async def expire_check(interaction, configs):
+async def expire_check(interaction, defer_response, configs):
   expire = configs.get('expire') # expire has to be at least 10 minutes in length
   if expire and discohook.utils.snowflake_time(interaction.message.id) + expire < time.time():
-    await start.StartView(interaction).update(None, True) # cant skip draw, no cursor on image
+    await start.StartView(interaction).update(None, expired_defer_response) # cant skip draw, no cursor on image
     return True
 
 def get_values(interaction):
@@ -39,16 +39,12 @@ async def move(interaction, dx, dy):
 
   # get grid size to get border, we use get so we can do skip draw here if same position
   grid_data, defer_response, new_refresh_at = await get_grid(interaction)
-  if await expire_check(interaction, grid_data[1]):
+  if await expire_check(interaction, defer_response, grid_data[1]):
     return
 
   if refresh_at > new_refresh_at: # move expired, so we need to update the grid
     grid_data, defer_response, new_refresh_at, _local_id = await get_grid(interaction, True, defer_response = defer_response)
-  if await expire_check(interaction, grid_data[1]):
-    return
-
-  # check if it has expired
-  if await expire_check(interaction, grid_data[1]):
+  if await expire_check(interaction, defer_response, grid_data[1]):
     return
 
   size = grid_data[1].get('size') or CANVAS_SIZE
@@ -162,11 +158,11 @@ async def place_button(interaction):
   
   now = time.time()
   (grid, configs), defer_response, refresh_at = await get_grid(interaction) # could save request later
-  if await expire_check(interaction, configs):
+  if await expire_check(interaction, defer_response, configs):
     return
   if refresh_at < now: # the above is not a new refresh
     (grid, configs), defer_response, refresh_at, local_id = await get_grid(interaction, True, defer_response = defer_response) # force refresh
-    if await expire_check(interaction, configs):
+    if await expire_check(interaction, defer_response, configs):
       return
 
   whiteout = configs.get('whiteout')
@@ -328,12 +324,12 @@ async def jump_modal(interaction, x, y):
     return await interaction.response.send('You are already at tile `({}, {})`!'.format(x, y), ephemeral = True)
 
   (grid, configs), defer_response, new_refresh_at = await get_grid(interaction)
-  if await expire_check(interaction, configs):
+  if await expire_check(interaction, defer_response, configs):
     return
     
   if refresh_at > new_refresh_at: # the above is outdated
     (grid, configs), defer_response, refresh_at, _local_id = await get_grid(interaction, True, defer_response = defer_response) # force refresh
-    if await expire_check(interaction, configs):
+    if await expire_check(interaction, defer_response, configs):
       return
   
   size = configs.get('size') or CANVAS_SIZE
@@ -432,12 +428,12 @@ async def zoom_select(interaction, values):
 
   # get cached grid size before we draw it to see if it goes beyond border
   grid_data, defer_response, new_refresh_at = await get_grid(interaction)
-  if await expire_check(interaction, grid_data[1]):
+  if await expire_check(interaction, defer_response, grid_data[1]):
     return
   
   if refresh_at > new_refresh_at:
     grid_data, defer_response, new_refresh_at, _local_id = await get_grid(interaction, True, defer_response = defer_response)
-    if await expire_check(interaction, grid_data[1]):
+    if await expire_check(interaction, defer_response, grid_data[1]):
       return
 
   size = grid_data[1].get('size') or CANVAS_SIZE
@@ -505,13 +501,13 @@ class ExploreView(discohook.View):
       (grid, configs), self.defer_response, refresh_at, skip_draw = refresh_data # refresh comparison is skipped, see below, because we just updated grid from place
     else:
       (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction) # can be inaccurate/not updated/go back in time so we check again
-      if await expire_check(self.interaction, configs):
+      if await expire_check(self.interaction, self.defer_response, configs):
         return True
       skip_draw = False
       if data: # only if data exists/clicked component on this view, step select, color modal have a chance not to refresh
         if old_refresh_at > refresh_at: # if old/second instance greater than current refresh, it means current/first instance is outdated
           (grid, configs), self.defer_response, refresh_at, _local_id = await get_grid(self.interaction, force = True)
-          if await expire_check(self.interaction, configs):
+          if await expire_check(self.interaction, self.defer_response, configs):
             return True
         else:
           skip_draw = True
