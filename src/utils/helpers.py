@@ -241,7 +241,7 @@ def calc_cell(x, y, args): # x here is string, y is int, as grid is {y (int) : {
   return np.array(
     (
       (0, 0, 0)
-      if args[4] else ((args[0][y][x][0] >> 16) & 255, (args[0][y][x][0] >> 8) & 255, args[0][y][x][0] & 255)
+      if args[4] else args[5][args[0][y][x][3]] if args[5] else ((args[0][y][x][0] >> 16) & 255, (args[0][y][x][0] >> 8) & 255, args[0][y][x][0] & 255)
     ), np.uint8) if (
     x in args[0][y] and (
       not args[1] or ( # ignore reset logic below if global canvas
@@ -257,7 +257,7 @@ vec_calc_cell = np.vectorize(calc_cell, np.dtype(np.uint8).char, excluded = {'y'
 
 def calc_row(y, startx, size, args):
   xdtype = startx + size[0] > 256 and np.uint16 or np.uint8 # dtype for available columns (X)
-  a = np.full((size[0], 3), 255, np.uint8) # default row is white pixels
+  a = np.full((size[0], 3), 255, np.uint8) # d`efault row is white pixels
   mask = np.intersect1d(np.arange(startx, startx + size[0], dtype = xdtype), tuple(args[0][y])).astype(xdtype) # indexes that exist in grid
   if mask.size:
     a[mask - startx] = vec_calc_cell(mask.astype(str), y = y, args = args) # np.full((size[0], 3), 0, np.uint8), string keys
@@ -269,14 +269,16 @@ def draw_map(grid, configs, startx = 0, starty = 0): # for sections, starty and 
   local = configs['local'] # determined and will exist by get_grid
   reset = configs.get('reset') # or 0 / doesnt matter for the check later in calc_cell
   count = configs.get('count') # will be None for snapshots, ensure 'local' doesn't work first before reaching this point
-  bw = configs.get('bw') # will be None of not black white mode
+  bw = configs.get('bw') # will be None if not black white mode
+  uc = configs.get('uc') # will be None if not user mode
   
   args = ( # list of other args for ease of access in calc_cell
     grid, # dictmap
     local,
     reset,
     count,
-    bw
+    bw,
+    uc
   )
 
   ydtype = starty + size[1] > 256 and np.uint16 or np.uint8 # dtype for available rows (Y), we need original size.

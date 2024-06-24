@@ -1,9 +1,27 @@
 import io
 import asyncio
+import colorsys
 import discohook
+from collections import defaultdict
 from PIL import Image
-from ..utils.helpers import get_grid, draw_map, get_user_data, get_guild_data
+from ..utils.helpers import get_grid, draw_map, get_user_data, get_guild_data, revert_text
 from ..utils.constants import COLOR_BLURPLE, COLOR_ORANGE, COLOR_RED, IMAGE_SIZE, CANVAS_SIZE
+
+color_presets = {
+  (255,   0,   0) : 'Red', # primary
+  (0,   255,   0) : 'Green',
+  (0,     0, 255) : 'Blue',
+  (0,   255, 255) : 'Cyan', # secondary
+  (255,   0, 255) : 'Magenta',
+  (255, 255,   0) : 'Yellow',
+  (255, 127,   0) : 'Orange', # tertiary
+  (127, 255,   0) : 'Chartreuse',
+  (0,   255, 127) : 'Aquamarine',
+  (0,   127, 255) : 'Azure',
+  (127,   0, 255) : 'Violet',
+  (255,   0, 127) : 'Rose'
+}
+default_color = (0, 0, 0) # black
 
 @discohook.command.slash('preview', description = 'Preview another server\'s canvas!',
   options = [
@@ -17,7 +35,8 @@ from ..utils.constants import COLOR_BLURPLE, COLOR_ORANGE, COLOR_RED, IMAGE_SIZE
       'mode', 'The mode to use. Defaults to 1',
       choices = [
         discohook.Choice('1 Default - Shows canvas in regular view', 1),
-        discohook.Choice('2 Black and White - Edited pixels are black', 2)
+        discohook.Choice('2 Black and White - Edited pixels are black', 2),
+        discohook.Choice('3 Users - Shows all pixels placed by same user', 3)
         #discohook.Choice('3 Heatmap - Most common pixels are red', 2),
         #discohook.Choice('4 Heatmap Age - By age instead', 3),
         #discohook.Choice('5 Users - Shows all pixels placed by same user', 4),
@@ -92,32 +111,14 @@ async def preview_command(interaction, server_id, mode = 1):
       reset = configs.get('reset')
       count = configs.get('count')
 
-
-      if mode in (1, 2):
-        tile_count = sum(
-          1
-          for y in grid
-          if y < size[1]
-          for x in grid[y]
-          if int(x) < size[0] and ((not reset and len(grid[y][x]) == count) or grid[y][x][-1] == reset)
-        )
-
-        description = 'Pixels filled: {}%'.format('{:.2f}'.format((tile_count / (size[0] * size[1])) * 100).rstrip('0').removesuffix('.'))
-      else:
-        raise ValueError('mode not supported', mode)
-
       embed = discohook.Embed(
       '{}\'s Canvas'.format(name),
-        description = '\n'.join([
-          'Canvas size: {}x{}'.format(*size),
-          '',
-          description
-        ]),
         color = COLOR_BLURPLE
       )
       if icon:
         embed.set_thumbnail(icon)
 
+      global_vars = {}
       def blocking():
         if mode == 1:
           im = draw_map(grid, configs)
@@ -126,6 +127,26 @@ async def preview_command(interaction, server_id, mode = 1):
           sconfigs['bw'] = True
           im = draw_map(grid, sconfigs)
           embed.set_footer('Preview Mode: 2 - Black & White')
+        elif mode == 3:
+          user_pixels = defaultdict(int)
+          for y in grid:
+            if y < size[1]:
+              for x in grid[y]:
+                if int(x) < size[0] and ((not reset and len(grid[y][x]) == count) or grid[y][x][-1] == reset):
+                  user_pixels[grid[y][x][3]] += 1
+
+          global_vars['user_pixels'] = user_pixels = dict(sorted(user_pixels.items(), key = lambda x: x[1], reverse = True))
+          user_colors = defaultdict(lambda: default_color) # black = default
+          color_preset_keys = tuple(color_presets)
+          for i, v in enumerate(user_pixels):
+            user_colors[v] = color_preset_keys[i]
+            if i == len(color_presets) - 1:
+              break
+          sconfigs = configs.copy()
+          sconfigs['uc'] = global_vars['user_colors'] = user_colors
+          im = draw_map(grid, sconfigs)
+          embed.set_footer('Preview Mode: 3 - Users')
+
         else:
           raise ValueError('mode draw method not found', mode)
         factor = IMAGE_SIZE // max(size)
@@ -138,6 +159,50 @@ async def preview_command(interaction, server_id, mode = 1):
 
       buffer = await asyncio.to_thread(blocking)
       embed.set_image(discohook.File('map.png', content = buffer.getvalue()))
+
+      get_pixels_filled = lambda count: '{:.2f}'.format((count / (size[0] * size[1])) * 100).rstrip('0').removesuffix('.')
+
+      if mode in (1, 2):
+        tile_count = sum(
+          1
+          for y in grid
+          if y < size[1]
+          for x in grid[y]
+          if int(x) < size[0] and ((not reset and len(grid[y][x]) == count) or grid[y][x][-1] == reset)
+        )
+
+        description = 'Pixels filled: {}%'.format(get_pixels_filled(tile_count))
+      elif mode == 3:
+        user_pixels = global_vars['user_pixels']
+        user_colors = global_vars['user_colors']
+        description = 'Total unique users: {}'.format(len(user_pixels))
+
+        parts = []
+        other_count = 0
+        other_places = 0
+        for i, (k, v) in enumerate(user_pixels.items()):
+          if (c := user_colors[k]) != default_color:
+            parts.append('{}. <@{}>'.format(i + 1, revert_text(k)))
+            parts.append('➔ {:,}x places or {}%'.format(v, get_pixels_filled(v)))
+            parts.append('➔ `#{:02x}{:02x}{:02x}` ({})'.format(c[0], c[1], c[2], color_presets[c]))
+          else:
+            other_count += 1
+            other_places += v
+        if other_count:
+          parts.append('Other ({}):'.format(other_count))
+          parts.append('➔ {:,}x places or {}%'.format(other_places, get_pixels_filled(other_places)))
+          c = default_color
+          parts.append('➔ `#{:02x}{:02x}{:02x}` ({})'.format(c[0], c[1], c[2], 'Black'))
+        description += '\n' + '\n'.join(parts)
+
+      else:
+        raise ValueError('mode not supported', mode)
+
+      embed.description = '\n'.join([ # description set after drawing so we can reuse calculations
+        'Canvas size: {}x{}'.format(*size),
+        '',
+        description
+      ])
 
   else:
     embed = discohook.Embed(
