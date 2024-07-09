@@ -72,10 +72,10 @@ class Database(Deta):
 
     return grid, configs
   
-  async def update_configs(self, local_id, exists, config, value):
+  async def update_configs(self, local_id, configs, config, value):
     assert local_id, 'not allowed for global canvas'
     key = get_key(local_id, 0)
-    if exists:
+    if configs['exist']:
       updater = Updater()
       updater.set(config, value)
       await self.pixels.update(key, updater)
@@ -84,6 +84,9 @@ class Database(Deta):
       local_id = convert_text(local_id) # saves storage
       record = Record(key, local_id = local_id, **kwargs)
       await self.pixels.insert(record)
+      configs['exist'] = True # y was now inserted, so update the cache for it
+    # update cache for that key
+    configs[config] = value
   
   async def create_row(self, local_id, y, x, tile):
     key = get_key(local_id, y)
