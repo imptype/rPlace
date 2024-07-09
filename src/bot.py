@@ -10,8 +10,8 @@ import contextlib
 import multiprocessing
 import discohook
 from starlette.responses import PlainTextResponse, Response
-from starlette.middleware import Middleware
-from starlette.middleware.base import BaseHTTPMiddleware
+#from starlette.middleware import Middleware
+#from starlette.middleware.base import BaseHTTPMiddleware
 from .utils import constants, database, helpers
 from .cogs.ping import ping_command
 from .cogs.help import help_command
@@ -26,38 +26,39 @@ from .screens.top import TopView
 from .screens.settings import SettingsView, resize_modal, cooldown_modal, reset_modal, spawn_modal, allowed_modal, whiteout_modal, expire_modal
 from .screens.color import ColorView
 
-expire_time = 5 # safe for deta
+# using custom vercel runtime
+#expire_time = 5 # safe for deta
 
-class CustomMiddleware(BaseHTTPMiddleware):
-  # new session per threadid/event loop that uses same app instance
-  async def dispatch(self, request, call_next): # keeps session open until request is completed, 10 seconds
-    if not hasattr(request.app.http, 'initial_session'):
-      request.app.http.initial_session = request.app.http.session
-      request.app.http.sessions.append((time.time(), request.app.http.session)) # timed out too
+# class CustomMiddleware(BaseHTTPMiddleware):
+#   # new session per threadid/event loop that uses same app instance
+#   async def dispatch(self, request, call_next): # keeps session open until request is completed, 10 seconds
+#     if not hasattr(request.app.http, 'initial_session'):
+#       request.app.http.initial_session = request.app.http.session
+#       request.app.http.sessions.append((time.time(), request.app.http.session)) # timed out too
 
-    now = time.time()
+#     now = time.time()
 
-    request.app.http.session = aiohttp.ClientSession('https://discord.com') # s[key]
-    request.app.http.sessions.append((now, request.app.http.session))
+#     request.app.http.session = aiohttp.ClientSession('https://discord.com') # s[key]
+#     request.app.http.sessions.append((now, request.app.http.session))
 
-    request.app.db = database.Database(request.app, os.getenv('DB')) # s[key]
-    request.app.dbs.append((now, request.app.db))
+#     request.app.db = database.Database(request.app, os.getenv('DB')) # s[key]
+#     request.app.dbs.append((now, request.app.db))
 
-    for sessions in (request.app.http.sessions, request.app.dbs): # cleanup
-      indexes_to_remove = []
-      for i, (timestamp, session) in enumerate(sessions):
-        if timestamp + expire_time < now:
-          await session.close()
-          indexes_to_remove.append(i)
-      for i in reversed(indexes_to_remove):
-        del sessions[i]
+#     for sessions in (request.app.http.sessions, request.app.dbs): # cleanup
+#       indexes_to_remove = []
+#       for i, (timestamp, session) in enumerate(sessions):
+#         if timestamp + expire_time < now:
+#           await session.close()
+#           indexes_to_remove.append(i)
+#       for i in reversed(indexes_to_remove):
+#         del sessions[i]
     
-    return await call_next(request)
+#     return await call_next(request)
 
 def run():
 
-  discohook.Client.dbs = []
-  discohook.https.HTTPClient.sessions = []
+  # discohook.Client.dbs = []
+  # discohook.https.HTTPClient.sessions = []
 
   """# monkeypatch discohook.https.HTTPClient.session to use different sessions based on current thread id
   def getter(self):
@@ -88,18 +89,12 @@ def run():
   @contextlib.asynccontextmanager
   async def lifespan(app):
     # app.http.session = session # monkeypatch in async environment for gunicorn
-    try:
-      yield
-    except asyncio.CancelledError:
-      print('Ignoring cancelled error. (CTRL+C)')
-    else:
-      print('Closed without errors.')
-    finally:
-      print('Closing sessions:', app.http.sessions, app.dbs, app.http.session)
-      for sessions in (app.http.sessions, app.dbs):
-        for (_timestamp, session) in sessions:
-          await session.close() # close aiohttp and deta sessions
-      await getattr(app.http, 'initial_session', app.http.session).close()
+    async with database.Database(app, os.getenv('DB')) as app.db:
+      try:
+        yield
+      finally:
+        if app.http.session: # close bot session
+          await app.http.session.close()
 
   # Define the bot
   app = discohook.Client(
@@ -107,8 +102,8 @@ def run():
     public_key = os.getenv('KEY'),
     token = os.getenv('TOKEN'),
     password = os.getenv('PASS'),
-    lifespan = lifespan,
-    middleware = [Middleware(CustomMiddleware)]
+    lifespan = lifespan#,
+    #middleware = [Middleware(CustomMiddleware)]
   )
 
   # Attach error handler

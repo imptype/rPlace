@@ -116,10 +116,10 @@ async def get_grid(interaction, force = False, override_local_id = None, defer_r
         if asyncio.get_event_loop() == fetch_task._loop:
           try:
             grid_data, refresh_at = await fetch_task
-          except RuntimeError as e:
+          except RuntimeError as e: # this should now be fixed and never be reached if using fixed vercel python runtime
             print('Skipping impossible runtime error:', e)
             grid_data, refresh_at = await fetch()
-        else:
+        else: # neither should this, which used to assume the old loop was closed, so it reopens it but its unreliable
           grid_data, refresh_at = fetch_task._loop.run_until_complete(fetch_task)
   
   if force: # need to return local id too for updating db in settings usually

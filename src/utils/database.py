@@ -85,8 +85,7 @@ class Database(Deta):
       record = Record(key, local_id = local_id, **kwargs)
       await self.pixels.insert(record)
       configs['exist'] = True # y was now inserted, so update the cache for it
-    # update cache for that key
-    configs[config] = value
+    configs[config] = value # update cache for that key
   
   async def create_row(self, local_id, y, x, tile):
     key = get_key(local_id, y)
