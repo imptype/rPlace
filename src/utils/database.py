@@ -15,6 +15,16 @@ def get_key(local_id, y):
     key = y_key
   return key
 
+def get_data_size(data): # should return size or just above actual size
+  total = 0
+  total += data.__sizeof__() # size taken by list
+  for dictionary in data:
+    total += dictionary.__sizeof__()
+    for key, inner_list in dictionary.items():
+      total += key.__sizeof__()
+      total += inner_list.__sizeof__()
+  return total
+
 class Database(Deta):
   def __init__(self, app, key, loop = None):
     super().__init__(key, loop = loop)
@@ -39,9 +49,10 @@ class Database(Deta):
     max_loops = 10 # hard limit for now
     while True: # until query stops
       response = (await self.pixels.fetch([query], last = last))
-      if not local_id: # pagination currently only applied to global canvas, in future update it for 5k pixel servers
+      # deta automatically gives us a last key, so we only check if the size is big enough to start paginating fetches
+      # currently deta returns data between 400kb-1.8mb, so to be really lenient, 128kb + is a fetch
+      if loops or get_data_size(response['items']) > 1024 * 128: # not the first loop and sufficient memory fetch, then allow last to be used
         last = response.get('paging', {}).get('last')
-
       results = response['items']
       if results:
         # extract configs from first record [Y0]
