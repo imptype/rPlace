@@ -106,7 +106,6 @@ def run():
     #middleware = [Middleware(CustomMiddleware)]
   )
 
-  # Attach error handler
   app.errors = []
   app.error_webhook = discohook.PartialWebhook.from_url(app, os.getenv('LOG'))
   @app.on_interaction_error()

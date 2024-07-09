@@ -1,4 +1,4 @@
-git+https://github.com/jnsougata/discohook.git@fbf5280
+git+https://github.com/jnsougata/discohook.git@4f680db
 git+https://github.com/jnsougata/deta.git@e498e3b
 Pillow==10.1.0
 numpy==1.26.2
