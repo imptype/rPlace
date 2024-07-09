@@ -521,6 +521,8 @@ class ExploreView(discohook.View):
     xborder = size[0] - 1
     yborder = size[1] - 1
     if not data: # only if canvas started:
+      if flip: # this is ahead so it doesn't overwrite custom y spawn
+        y = yborder # start from top instead of at 0
       if spawn != DEFAULT_SPAWN:
         if spawn[0] == '?':
           x = random.randint(0, xborder)
@@ -533,9 +535,7 @@ class ExploreView(discohook.View):
         else:
           y = int(spawn[-1])
           if y > yborder:
-            y = yborder          
-      if flip:
-        y = yborder # start from top instead of at 0
+            y = yborder
     if flip:
       vy = yborder - y
     else:
