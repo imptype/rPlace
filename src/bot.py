@@ -125,7 +125,7 @@ def run():
     text += '\n'
     text += '.'.join(map(lambda x: x.__name__, error.__class__.__mro__))
     text += '\n\n'
-    text += 'Command: {}'.format(interaction.payload['data']['name']) if interaction.kind == 2 else 'Component: {}'.format(interaction.data['custom_id'])
+    text += 'Command: {}'.format(interaction.payload['data']['name']) if interaction.type == 2 else 'Component: {}'.format(interaction.data['custom_id'])
     text += '\n'
     text += 'User: {} | {}, Guild: {}'.format(interaction.author.name, interaction.author.id, interaction.guild_id)
     text += '\n\n'

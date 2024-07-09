@@ -27,7 +27,7 @@ MAX_RANDOM = 4_294_967_296 # 0x100000000
 #SALT3 = int(''.join(map(lambda x: str(ord(x)), os.getenv('SALT3')))) # int, used for position of text sum in text result
 
 def is_local(interaction):
-  if interaction.kind == 2: # app command, just started
+  if interaction.type == 2: # app command, just started
     value = interaction.payload['data']
   else: # 3, 5 component or modal interaction, edited
     value = interaction.payload['message']['interaction']
