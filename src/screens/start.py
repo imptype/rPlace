@@ -49,6 +49,8 @@ class StartView(discohook.View):
       (grid, configs), self.defer_response, refresh_at = await get_grid(self.interaction, defer_response = expired_defer_response)
       skip_draw = False
 
+    has_expired = isinstance(expired_defer_response, bool) or bool(expired_defer_response)
+
     local_id = get_local_id(self.interaction)
     
     if local_id:
@@ -60,14 +62,14 @@ class StartView(discohook.View):
         title = 'the Global Canvas'
     
     size = configs.get('size') or CANVAS_SIZE
-    text = '' if expired_defer_response else '\n\nClick 🔍 **Explore** to start exploring!'
+    text = '' if has_expired else '\n\nClick 🔍 **Explore** to start exploring!'
 
     self.embed = discohook.Embed(
       'Welcome to {}!'.format(title),
       description = 'Canvas size: {}x{}'.format(*size) + text,
       color = COLOR_BLURPLE
     )
-    if expired_defer_response:
+    if has_expired:
       self.embed.set_footer('Interaction has expired, run the command again.')
 
     if skip_draw:
@@ -97,10 +99,20 @@ class StartView(discohook.View):
 
     is_admin_check = bool(local_id and is_admin(self.interaction)) # checks if they can edit canvas
     
-    if is_admin_check:
-      self.add_buttons(dynamic_explore_button, top_button, settings_button, refresh_button)
+    if has_expired:
+      if is_admin_check:
+        dynamic_settings_button = discohook.Button(
+          settings_button.label,
+          emoji = settings_button.emoji,
+          style = settings_button.style,
+          custom_id = '{}:{}'.format(settings_button.custom_id, refresh_at)
+        )
+        self.add_buttons(dynamic_settings_button) # only button they see is settings
     else:
-      self.add_buttons(dynamic_explore_button, top_button, refresh_button)
+      if is_admin_check:
+        self.add_buttons(dynamic_explore_button, top_button, settings_button, refresh_button)
+      else:
+        self.add_buttons(dynamic_explore_button, top_button, refresh_button)
   
   async def send(self):
     await self.setup()
@@ -113,6 +125,6 @@ class StartView(discohook.View):
   async def update(self, refresh_data = None, expired_defer_response = None):
     await self.setup(refresh_data, expired_defer_response)
     if self.defer_response:
-      await self.defer_response.edit(embed = self.embed, view = None if expired_defer_response else self)
+      await self.defer_response.edit(embed = self.embed, view = self)
     else:
       await self.interaction.response.update_message(embed = self.embed, view = None if expired_defer_response else self)
