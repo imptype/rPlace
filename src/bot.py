@@ -283,7 +283,10 @@ def run():
         'Started: {}'.format(app.started_at),
         '',
         'Workers: {}'.format(multiprocessing.cpu_count() * 2 + 1),
-        'Extra: {}'.format(app.http.session._loop == asyncio.get_running_loop()),
+        'Extra: {}'.format(
+          app.http.session.loop == asyncio.get_running_loop()
+          if app.http.session else 'N/A'
+        ),
         'Main: {}'.format(app.maintenance),
         'Test: {}'.format(app.test),
         '',
