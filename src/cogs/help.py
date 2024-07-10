@@ -22,17 +22,18 @@ async def help_command(interaction):
     description = '\n'.join([
       '**Pixel Canvas** lets you place pixels on a resizable canvas with others in real-time. You can draw pixel art or wage pixel wars! In other words, this bot recreates the [r/Place subreddit](https://reddit.com/r/place) experience on Discord as closely as possible, with a moving cursor and such.',
       '',
-      '**Commands [4]**',
+      '**Commands [5]**',
       '> The prefix is [Slash Commands](https://support.discord.com/hc/en-us/articles/1500000368501-Slash-Commands-FAQ).',
       '> `/ping` - tests the bot\'s latency in milliseconds.',
       '> `/help` - shows the command list and bot information.',
       '> `/canvas` - interacts with the GLOBAL (server-wide) canvas.',
       '> `/local-canvas` - interacts with your SERVER or DM canvas.',
+      '> `/preview` - previews a canvas by ID with different modes.',
       '',
       '**IMPORTANT NOTE:** The global canvas is not moderated. If you do not want NSFW or griefing then use `/local-canvas` instead.',
       '',
       '**Bot Credits**',
-      'This bot was built using the [discohook library](https://github.com/jnsougata/discohook) and [deta.space](https://deta.space)!',
+      'This bot was built using the [discohook library](https://github.com/jnsougata/discohook "The library "discohook" is used to make asynchronous serverless Python Discord bots!"), [deta](https://deta.space "Deta Space hosts all our data, and can be used to host apps too!") & [Vercel](https://vercel.com "Vercel is a fast way to deploy serverless functions, which is the cheapest and most efficient hosting solution!")!',
       'Join the [support server]({}) if you have any questions or suggestions.'.format(BOT_SUPPORT_URL)
     ]),
     color = COLOR_ORANGE

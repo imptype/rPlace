@@ -50,7 +50,7 @@ class Database(Deta):
     while True: # until query stops
       response = (await self.pixels.fetch([query], last = last))
       # deta automatically gives us a last key, so we only check if the size is big enough to start paginating fetches
-      # currently deta returns data between 400kb-1.8mb, so to be really lenient, 128kb + is a fetch
+      # currently deta returns data inconsistently between 400kb-1.8mb, so to be really lenient, 128kb + is a fetch
       if loops or get_data_size(response['items']) > 1024 * 128: # not the first loop and sufficient memory fetch, then allow last to be used
         last = response.get('paging', {}).get('last')
       results = response['items']
