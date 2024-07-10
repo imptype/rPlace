@@ -28,11 +28,7 @@ async def help_command(interaction):
       '> `/help` - shows the command list and bot information.',
       '> `/canvas` - interacts with the GLOBAL (server-wide) canvas.',
       '> `/local-canvas` - interacts with your SERVER or DM canvas.',
-      '> `/preview` - previews a canvascurl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | \
-  sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && \
-  echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | \
-  sudo tee /etc/apt/sources.list.d/ngrok.list && \
-  sudo apt update && sudo apt install ngrok && ngrok http 8000 by ID with different modes.',
+      '> `/preview` - previews a canvas by ID with different modes.',
       '',
       '**IMPORTANT NOTE:** The global canvas is not moderated. If you do not want NSFW or griefing then use `/local-canvas` instead.',
       '',
