@@ -9,7 +9,7 @@ import threading
 import contextlib
 import multiprocessing
 import discohook
-from starlette.responses import PlainTextResponse, Response
+from starlette.responses import PlainTextResponse, JSONResponse, Response
 #from starlette.middleware import Middleware
 #from starlette.middleware.base import BaseHTTPMiddleware
 from .utils import constants, database, helpers
@@ -106,28 +106,26 @@ def run():
     #middleware = [Middleware(CustomMiddleware)]
   )
 
+  # Attach error handlers
   app.errors = []
   app.error_webhook = discohook.PartialWebhook.from_url(app, os.getenv('LOG'))
-  @app.on_interaction_error()
-  async def on_error(interaction, error):
-    app.errors.append(str(error))
-
-    # Ignore
-    if isinstance(error, discohook.errors.CheckFailure):
-      return print('Ignoring check failure', str(interaction.author), interaction.data['custom_id'].split(':')[0])
-    elif isinstance(error, NotImplementedError):
-      return print('Ignoring component not found', str(interaction.author), interaction.data)
-    elif isinstance(error, helpers.MaintenanceError):
-      return print('Ignoring maintenance failure', error.message)
-      
+  @contextlib.asynccontextmanager
+  async def handle_error(error, instance = None): # this formats the error and logs it
     # Build error text with local variable values
     text = '{}: {}'.format(type(error).__name__, str(error))
     text += '\n'
     text += '.'.join(map(lambda x: x.__name__, error.__class__.__mro__))
     text += '\n\n'
-    text += 'Command: {}'.format(interaction.payload['data']['name']) if interaction.type == 2 else 'Component: {}'.format(interaction.data['custom_id'])
-    text += '\n'
-    text += 'User: {} | {}, Guild: {}'.format(interaction.author.name, interaction.author.id, interaction.guild_id)
+    if isinstance(instance, discohook.Interaction):
+      interaction = instance
+      text += 'Command: /{}'.format(interaction.payload['data']['name']) if interaction.type == 2 else 'Component: {}'.format(interaction.data['custom_id'])
+      text += '\n'
+      text += 'User: {} | {}, Guild: {}'.format(interaction.author.name, interaction.author.id, interaction.guild_id)
+    else: # request object
+      request = instance
+      text += 'HTTP Exception: 500 Internal Server Error'
+      text += '\n'
+      text += 'Route: {}'.format(request.url.path)
     text += '\n\n'
     trace = tuple(traceback.TracebackException.from_exception(error).format())
     text += ''.join(trace)
@@ -146,19 +144,46 @@ def run():
         break
     text += ''.join(trace[-2:])
     print(text)
-    print('Now vs when:', datetime.datetime.fromtimestamp(interaction.created_at), datetime.datetime.utcnow())
 
+    now = datetime.datetime.utcnow()
+    if isinstance(instance, discohook.Interaction):
+      print('Now vs when:', datetime.datetime.fromtimestamp(interaction.created_at), now)
+    else:
+      print('Now:', now)
+    
     # Respond and log
     content = 'Test ' if app.test else ''
-    try:
-      if interaction.responded:
-        respond = interaction.response.followup('Sorry, an error has occurred (after responding).')
-      else:
-        respond = interaction.response.send('Sorry, an error has occurred.')
-    except:
-      content += '(failed)'
-    log = app.error_webhook.send(content.strip(), file = discohook.File('error.txt', content = text.encode()))
-    await asyncio.gather(respond, log)
+
+    data = ['']
+    yield data
+    content += data[0]
+    await app.error_webhook.send(content.strip(), file = discohook.File('error.txt', content = text.encode()))
+
+  @app.on_interaction_error()
+  async def on_interaction_error(interaction, error):
+    app.errors.append(str(error))
+
+    # Ignore
+    if isinstance(error, discohook.errors.CheckFailure):
+      return print('Ignoring check failure', str(interaction.author), interaction.data['custom_id'].split(':')[0])
+    elif isinstance(error, NotImplementedError):
+      return print('Ignoring component not found', str(interaction.author), interaction.data)
+    elif isinstance(error, helpers.MaintenanceError):
+      return print('Ignoring maintenance failure', error.message)
+      
+    async with handle_error(error, interaction) as hr:
+      try:
+        if interaction.responded:
+          await interaction.response.followup('Sorry, an error has occurred (after responding).')
+        else:
+          await interaction.response.send('Sorry, an error has occurred.')
+      except:
+        hr.content += '(failed)'
+  
+  @app.on_error()
+  async def on_error(request, error):
+    async with handle_error(error, request):
+      return JSONResponse({error.__class__.__name__: str(error)}, 500)
 
   # Set custom ID parser
   @app.custom_id_parser()
