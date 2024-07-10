@@ -178,7 +178,7 @@ def run():
         else:
           await interaction.response.send('Sorry, an error has occurred.')
       except:
-        hr.content += '(failed)'
+        hr[0] = '(failed)'
   
   @app.on_error()
   async def on_error(request, error):
