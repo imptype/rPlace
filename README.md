@@ -1,5 +1,5 @@
 # rPlace
-r/Place (renamed later to Pixel Canvas) was my first ever Discord bot. It went through 3 rewrites (`legacy` -> `rewrite` -> `main`). I still think the code was never that good, although completely functional, and at it's current state, it's extremely messy to work with.
+r/Place (renamed later to Pixel Canvas) was my first ever Discord bot. It went through 3 rewrites (`legacy` -> `rewrite` -> `main`). I still think the code was never that good, although completely functional, and at its current state, it's extremely messy to work with.
 
 The bot shutdown because the database it relied heavily upon, provided by [Deta](deta.space), has shutdown. A lot of code would need to be rewritten, not just [database.py](src/utils/database.py), and I don't think it's a worthwhile investment rn.
 
